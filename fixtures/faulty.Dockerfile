@@ -10,7 +10,7 @@ LABEL maintainer="Fred"
 
 LABEL foo="bar" maintainer="I, the author"
 
-COPY .. .
+COPY credentials.txt config.py
 COPY a b
 
 COPY ../requirements.txt src/main.py /app/
