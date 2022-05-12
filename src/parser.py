@@ -1,5 +1,4 @@
 import ast
-import json
 import os
 
 
@@ -18,7 +17,7 @@ class DockerfileParser:
         self.df_ast = self.parse_dockerfile()
 
     @staticmethod
-    def _read_dockerfile(path):
+    def _read_dockerfile(path: str) -> list:
         if os.path.exists(path):
             with open(path, 'r') as f:
                 data = f.read().splitlines()
@@ -26,7 +25,7 @@ class DockerfileParser:
         else:
             raise FileNotFoundError(f"Dockerfile not found, path: {path}")
 
-    def _get_state(self, line: str):
+    def _get_state(self, line: str) -> str:
         if line == "":
             state = "blank"
         elif line.startswith("#"):
@@ -42,7 +41,7 @@ class DockerfileParser:
         return state
 
     @staticmethod
-    def _get_instruction(line):
+    def _get_instruction(line: str) -> [str, None]:
         if line != "":
             if line.startswith("#"):
                 instruction = "COMMENT"
@@ -52,7 +51,7 @@ class DockerfileParser:
         return None
 
     @staticmethod
-    def _get_raw_command(line):
+    def _get_raw_command(line: str) -> [str, None]:
         if line.startswith("#"):
             return line.split("#", 1)[1]
         elif line != "":
@@ -60,7 +59,7 @@ class DockerfileParser:
         return None
 
     @staticmethod
-    def _parse_json_notation(command):
+    def _parse_json_notation(command: str) -> dict:
         try:
             run_eval = ast.literal_eval(command)
         except (SyntaxError, ValueError):
@@ -73,7 +72,7 @@ class DockerfileParser:
                 return dict(executable=run_split[0], arguments=[])
             return dict(executable=run_split[0], arguments=run_split[1])
 
-    def _parse_command(self, instruction, command):
+    def _parse_command(self, instruction: str, command: str) -> dict:
         if instruction == "COMMENT":
             return dict(comment=command.strip())
         elif instruction == "FROM":
@@ -143,7 +142,7 @@ class DockerfileParser:
             raise NotImplementedError(f"Instruction is not implemented: {instruction}")
 
     @staticmethod
-    def _concat_multi_line_instruction(lines):
+    def _concat_multi_line_instruction(lines: list) -> str:
         single_line = ""
         for i in lines:
             single_line += i["raw_command"]
@@ -155,16 +154,16 @@ class DockerfileParser:
         lines[0]["raw_command"] = single_line
         return lines[0]
 
-    def split_multi_lines(self, b):
+    def split_multi_lines(self, lines: list) -> list:
         result = []
         start_index = 0
-        for i, x in enumerate(b):
+        for i, x in enumerate(lines):
             if x["state"] == "end_multi_line_command":
-                result.append(self._concat_multi_line_instruction(lines=b[start_index:i+1]))
+                result.append(self._concat_multi_line_instruction(lines=lines[start_index:i + 1]))
                 start_index = i+1
         return result
 
-    def parse_dockerfile(self):
+    def parse_dockerfile(self) -> list[dict]:
         parsed = [{"line_number": dict(start=line_number + 1),
                    "raw_line": i,
                    "state": self._get_state(line=i),
@@ -187,86 +186,85 @@ class DockerfileParser:
                          _raw=i["raw_line"]
                          )
                     for i in single_line_instructions]
-        print(json.dumps(enriched))
         return enriched
 
-    def _get_instructions(self, instruction):
+    def _get_instructions(self, instruction: str) -> list[dict]:
         return [i for i in self.df_ast if i["instruction"] == instruction]
 
     @property
-    def users(self):
+    def users(self) -> list[dict]:
         return self._get_instructions(instruction="USER")
 
     @property
-    def froms(self):
+    def froms(self) -> list[dict]:
         return self._get_instructions(instruction="FROM")
 
     @property
-    def instructions(self):
+    def instructions(self) -> list[dict]:
         return [i["instruction"] for i in self.df_ast]
 
     @property
-    def copies(self):
+    def copies(self) -> list[dict]:
         return self._get_instructions(instruction="COPY")
 
     @property
-    def adds(self):
+    def adds(self) -> list[dict]:
         return self._get_instructions(instruction="ADD")
 
     @property
-    def comments(self):
+    def comments(self) -> list[dict]:
         return self._get_instructions(instruction="COMMENT")
 
     @property
-    def args(self):
+    def args(self) -> list[dict]:
         return self._get_instructions(instruction="ARG")
 
     @property
-    def envs(self):
+    def envs(self) -> list[dict]:
         return self._get_instructions(instruction="ENV")
 
     @property
-    def labels(self):
+    def labels(self) -> list[dict]:
         return self._get_instructions(instruction="LABEL")
 
     @property
-    def runs(self):
+    def runs(self) -> list[dict]:
         return self._get_instructions(instruction="RUN")
 
     @property
-    def entrypoints(self):
+    def entrypoints(self) -> list[dict]:
         return self._get_instructions(instruction="ENTRYPOINT")
 
     @property
-    def cmds(self):
+    def cmds(self) -> list[dict]:
         return self._get_instructions(instruction="CMD")
 
     @property
-    def shells(self):
+    def shells(self) -> list[dict]:
         return self._get_instructions(instruction="SHELL")
 
     @property
-    def exposes(self):
+    def exposes(self) -> list[dict]:
         return self._get_instructions(instruction="EXPOSE")
 
     @property
-    def workdirs(self):
+    def workdirs(self) -> list[dict]:
         return self._get_instructions(instruction="WORKDIR")
 
     @property
-    def stopsignals(self):
+    def stopsignals(self) -> list[dict]:
         return self._get_instructions(instruction="STOPSIGNAL")
 
     @property
-    def volumes(self):
+    def volumes(self) -> list[dict]:
         return self._get_instructions(instruction="VOLUME")
 
     @property
-    def healthchecks(self):
+    def healthchecks(self) -> list[dict]:
         return self._get_instructions(instruction="HEALTHCHECK")
 
     @property
-    def onbuilds(self):
+    def onbuilds(self) -> list[dict]:
         return self._get_instructions(instruction="ONBUILD")
 
 
