@@ -1,6 +1,6 @@
 import argparse
 
-from parser import DockerfileParser
+from src.parser import DockerfileParser
 
 
 class Analyzer:
@@ -14,10 +14,16 @@ class Analyzer:
         self.dockerfile = dockerfile
         self.results = []
         self.errors = 0
-        self.warning = 0
+        self.warnings = 0
+
+        self.raw_text = True if raw_text else False
 
     def _formatter(self, data, severity, rule_info):
         print(f"{self.dockerfile}:{data['line_number']['start']} - {severity.upper()} - {rule_info}")
+        if severity.upper() == "ERROR":
+            self.errors += 1
+        elif severity.upper() == "WARNING":
+            self.warnings += 1
 
     def rule_1(self):
         """
@@ -32,9 +38,10 @@ class Analyzer:
 
         for word in sensitive_files:
             for i in self.dfp.copies:
-                if word in i["instruction_details"]["target"]:
-                    self._formatter(data=i, severity="ERROR",
-                                    rule_info="Error, make sure to not copy sensitive information")
+                for source in i["instruction_details"]["source"]:
+                    if word in source:
+                        self._formatter(data=i, severity="ERROR",
+                                        rule_info="Error, make sure to not copy sensitive information")
 
     def rule_2(self):
         """
@@ -56,7 +63,7 @@ class Analyzer:
         Verify that last user is not root
         :return:
         """
-        if self.dfp.users[-1]["instruction_details"]["user"].lower() == "root":
+        if len(self.dfp.users) > 0 and self.dfp.users[-1]["instruction_details"]["user"].lower() == "root":
             self._formatter(data=self.dfp.users[-1], severity="ERROR",
                             rule_info="Error, make sure the last user is not root")
 
@@ -64,6 +71,7 @@ class Analyzer:
         self.rule_1()
         self.rule_2()
         self.rule_3()
+        return self.warnings, self.errors
 
 
 if __name__ == "__main__":
