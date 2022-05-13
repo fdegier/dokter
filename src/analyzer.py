@@ -1,3 +1,5 @@
+import argparse
+
 from parser import DockerfileParser
 
 
@@ -20,16 +22,15 @@ class Analyzer:
     def rule_1(self):
         """
         Verify that no credentials are leaking
-        :param data:
         :return:
         """
-        sensistive_files = [
+        sensitive_files = [
             ".env", ".pem", ".properties"
             "settings", "config", "secrets", "application", "dev", "appsettings", "credentials", "default", "strings",
             "environment"
         ]
 
-        for word in sensistive_files:
+        for word in sensitive_files:
             for i in self.dfp.copies:
                 if word in i["instruction_details"]["target"]:
                     self._formatter(data=i, severity="ERROR",
@@ -50,8 +51,25 @@ class Analyzer:
                     self._formatter(data=i, severity="ERROR",
                                     rule_info="Error, make sure that a build arg does not contain secrets")
 
+    def rule_3(self):
+        """
+        Verify that last user is not root
+        :return:
+        """
+        if self.dfp.users[-1]["instruction_details"]["user"].lower() == "root":
+            self._formatter(data=self.dfp.users[-1], severity="ERROR",
+                            rule_info="Error, make sure the last user is not root")
+
+    def run(self):
+        self.rule_1()
+        self.rule_2()
+        self.rule_3()
+
 
 if __name__ == "__main__":
-    a = Analyzer(dockerfile="fixtures/faulty.Dockerfile")
-    a.rule_1()
-    a.rule_2()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dockerfile", dest="dockerfile",  required=False, default="fixtures/faulty.Dockerfile",
+                        help="Path to Dockerfile location")
+    args = parser.parse_args()
+    a = Analyzer(dockerfile=args.dockerfile)
+    a.run()
