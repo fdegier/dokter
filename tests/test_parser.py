@@ -85,7 +85,7 @@ def test_adds(raw, chown, source, target):
 
 
 def test_instructions():
-    dfp = DockerfileParser("../Dockerfile")
+    dfp = DockerfileParser("../fixtures/Dockerfile")
     assert len(dfp.instructions) == 27
     instructions = ['FROM', 'ARG', 'ARG', 'ENV', 'LABEL', 'LABEL', 'LABEL', 'COPY', 'COPY', 'COPY', 'ENV', 'ENV',
                     'COMMENT', 'RUN', 'RUN', 'SHELL', 'EXPOSE', 'EXPOSE', 'ADD', 'USER', 'WORKDIR', 'ENTRYPOINT',
@@ -109,18 +109,20 @@ def test_args(raw, argument, default_value):
 
 
 @pytest.mark.parametrize(
-    "raw,environment_variable,default_value",
+    "raw,envs,environment_variables",
     [
-        ("ENV VERSION=$version", "VERSION", "$version"),
-        ("ENV DEBIAN_FRONTEND=noninteractive", "DEBIAN_FRONTEND", "noninteractive")
+        ("ENV VERSION=$version", 1, [("VERSION", "$version")]),
+        ("ENV DEBIAN_FRONTEND=noninteractive", 1, [("DEBIAN_FRONTEND", "noninteractive")]),
+        ("ENV VERSION=$version DEBIAN_FRONTEND=noninteractive", 2, [("VERSION", "$version"), ("DEBIAN_FRONTEND", "noninteractive")])
     ]
 )
-def test_envs(raw, environment_variable, default_value):
+def test_envs(raw, envs, environment_variables):
     dfp = DockerfileParser(raw_text=raw)
     assert len(dfp.envs) == 1
-    assert dfp.envs[0]["instruction"] == "ENV"
-    assert dfp.envs[0]["instruction_details"].get("environment_variable") == environment_variable
-    assert dfp.envs[0]["instruction_details"].get("default_value") == default_value
+    for i in range(envs):
+        assert dfp.envs[0]["instruction"] == "ENV"
+        assert dfp.envs[0]["instruction_details"][i].get("environment_variable") == environment_variables[i][0]
+        assert dfp.envs[0]["instruction_details"][i].get("default_value") == environment_variables[i][1]
 
 
 @pytest.mark.parametrize(
@@ -147,7 +149,7 @@ def test_labels(raw, key, value, raw_labels):
         ("RUN apt-get install curl && git", "apt-get", "install curl && git"),
         ("""RUN apt-get \\
                 install curl && \\
-                git""", "apt-get", "\\               install curl && \\               git")
+                git""", "apt-get", "\\install curl && \\git")
     ]
 )
 def test_runs(raw, executable, arguments):
@@ -277,3 +279,14 @@ def test_onbuilds(raw, sub_instruction, executable, arguments):
     assert dfp.onbuilds[0]["instruction_details"].get("executable") == executable
     assert dfp.onbuilds[0]["instruction_details"].get("arguments") == arguments
 
+
+@pytest.mark.parametrize(
+    "dockerfile,expected",
+    [
+        ("../dockerfiles/ansible.Dockerfile", [{'line_number': {'start': 1}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '+++++++++++++++++++++++++++++++++++++++'}, '_raw': '#+++++++++++++++++++++++++++++++++++++++'}, {'line_number': {'start': 2}, 'instruction': 'COMMENT', 'instruction_details': {'comment': 'Dockerfile for webdevops/ansible:ubuntu-16.04'}, '_raw': '# Dockerfile for webdevops/ansible:ubuntu-16.04'}, {'line_number': {'start': 3}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '-- automatically generated  --'}, '_raw': '#    -- automatically generated  --'}, {'line_number': {'start': 4}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '+++++++++++++++++++++++++++++++++++++++'}, '_raw': '#+++++++++++++++++++++++++++++++++++++++'}, {'line_number': {'start': 6}, 'instruction': 'FROM', 'instruction_details': {'image': 'webdevops/bootstrap', 'version': 'ubuntu-16.04'}, '_raw': 'FROM webdevops/bootstrap:ubuntu-16.04'}, {'line_number': {'start': 8, 'end': 32}, 'instruction': 'RUN', 'instruction_details': {'executable': 'set', 'arguments': '-x \\&& apt-install \\python-minimal \\python-setuptools \\python-pip \\python-paramiko \\python-jinja2 \\python-dev \\libffi-dev \\libssl-dev \\build-essential \\openssh-client \\&& pip install --upgrade pip \\&& hash -r \\&& pip install --no-cache-dir ansible \\&& chmod 750 /usr/local/bin/ansible* \\&& apt-get purge -y -f --force-yes \\python-dev \\build-essential \\libssl-dev \\libffi-dev \\&& docker-run-bootstrap \\&& docker-image-cleanup'}, '_raw': 'RUN set -x \\'}, {'line_number': {'start': 9}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '# Install ansible'}, '_raw': '    # Install ansible'}, {'line_number': {'start': 25}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '# Cleanup'}, '_raw': '    # Cleanup'}]),
+        ("../dockerfiles/couchdb.Dockerfile", [{'line_number': {'start': 1}, 'instruction': 'COMMENT', 'instruction_details': {'comment': '"ported" by Adam Miller <maxamillion@fedoraproject.org> from'}, '_raw': '# "ported" by Adam Miller <maxamillion@fedoraproject.org> from'}, {'line_number': {'start': 2}, 'instruction': 'COMMENT', 'instruction_details': {'comment': 'https://github.com/fedora-cloud/Fedora-Dockerfiles'}, '_raw': '#   https://github.com/fedora-cloud/Fedora-Dockerfiles'}, {'line_number': {'start': 3}, 'instruction': 'COMMENT', 'instruction_details': {'comment': ''}, '_raw': '#'}, {'line_number': {'start': 4}, 'instruction': 'COMMENT', 'instruction_details': {'comment': 'Originally written for Fedora-Dockerfiles by'}, '_raw': '# Originally written for Fedora-Dockerfiles by'}, {'line_number': {'start': 5}, 'instruction': 'COMMENT', 'instruction_details': {'comment': 'scollier <scollier@redhat.com>'}, '_raw': '#   scollier <scollier@redhat.com>'}, {'line_number': {'start': 7}, 'instruction': 'FROM', 'instruction_details': {'image': 'centos', 'version': 'centos7'}, '_raw': 'FROM centos:centos7'}, {'line_number': {'start': 8}, 'instruction': 'MAINTAINER', 'instruction_details': {'maintainer': 'The CentOS Project <cloud-ops@centos.org>'}, '_raw': 'MAINTAINER The CentOS Project <cloud-ops@centos.org>'}, {'line_number': {'start': 10}, 'instruction': 'RUN', 'instruction_details': {'executable': 'yum', 'arguments': '-y update && yum clean all'}, '_raw': 'RUN  yum -y update && yum clean all'}, {'line_number': {'start': 12}, 'instruction': 'COPY', 'instruction_details': {'source': './install.sh', 'target': '/tmp/install.sh'}, '_raw': 'COPY ./install.sh /tmp/install.sh'}, {'line_number': {'start': 14}, 'instruction': 'RUN', 'instruction_details': {'executable': '/bin/sh', 'arguments': '/tmp/install.sh'}, '_raw': 'RUN /bin/sh /tmp/install.sh'}, {'line_number': {'start': 16}, 'instruction': 'RUN', 'instruction_details': {'executable': 'rm', 'arguments': '-rf /tmp/install.sh'}, '_raw': 'RUN rm -rf /tmp/install.sh'}, {'line_number': {'start': 18}, 'instruction': 'EXPOSE', 'instruction_details': {'port': '5984'}, '_raw': 'EXPOSE  5984'}, {'line_number': {'start': 20}, 'instruction': 'CMD', 'instruction_details': {'executable': '/bin/bash', 'arguments': ['-e', '/usr/local/bin/couchdb', 'start']}, '_raw': 'CMD ["/bin/bash", "-e", "/usr/local/bin/couchdb", "start"]'}])
+    ]
+)
+def test_dockerfiles(dockerfile, expected):
+    dfp = DockerfileParser(dockerfile=dockerfile)
+    assert dfp.df_ast == expected

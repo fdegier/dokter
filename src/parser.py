@@ -1,3 +1,4 @@
+import argparse
 import ast
 import os
 
@@ -6,7 +7,7 @@ class DockerfileParser:
     def __init__(self, dockerfile: str = None, raw_text: str = None):
         self.valid_instructions = ["#", "COMMENT", "FROM", "COPY", "ADD", "WORKDIR", "EXPOSE", "USER", "ARG", "ENV",
                                    "LABEL", "RUN", "CMD", "ENTRYPOINT", "ONBUILD", "HEALTHCHECK", "STOPSIGNAL",
-                                   "VOLUME", "SHELL"]
+                                   "VOLUME", "SHELL", "MAINTAINER"]
         if dockerfile is not None:
             self.df_content = self._read_dockerfile(path=dockerfile)
         elif raw_text is not None:
@@ -28,7 +29,7 @@ class DockerfileParser:
     def _get_state(self, line: str) -> str:
         if line == "":
             state = "blank"
-        elif line.startswith("#"):
+        elif line.strip().startswith("#"):
             state = "comment"
         elif line.split(" ", 1)[0] in self.valid_instructions and line.endswith("\\"):
             state = "new_multi_line_command"
@@ -43,7 +44,7 @@ class DockerfileParser:
     @staticmethod
     def _get_instruction(line: str) -> [str, None]:
         if line != "":
-            if line.startswith("#"):
+            if line.strip().startswith("#"):
                 instruction = "COMMENT"
             else:
                 instruction = line.split(" ", 1)[0]
@@ -53,9 +54,9 @@ class DockerfileParser:
     @staticmethod
     def _get_raw_command(line: str) -> [str, None]:
         if line.startswith("#"):
-            return line.split("#", 1)[1]
+            return line.split("#", 1)[1].replace("#", "")
         elif line != "":
-            return line.split(" ", 1)[1]
+            return line.split(" ", 1)[1].strip()
         return None
 
     @staticmethod
@@ -71,6 +72,17 @@ class DockerfileParser:
             if len(run_split) == 1:
                 return dict(executable=run_split[0], arguments=[])
             return dict(executable=run_split[0], arguments=run_split[1])
+
+    @staticmethod
+    def _parse_envs(command):
+        if "=" in command:
+            env_split = command.split("=")
+            return dict(environment_variable=env_split[0], default_value=env_split[1])
+        elif " " in command:
+            env_split = command.split(" ", 1)
+            return dict(environment_variable=env_split[0], default_value=env_split[1])
+        else:
+            return dict(environment_variable=command)
 
     def _parse_command(self, instruction: str, command: str) -> dict:
         if instruction == "COMMENT":
@@ -108,17 +120,19 @@ class DockerfileParser:
             else:
                 return dict(argument=command)
         elif instruction == "ENV":
-            if "=" in command:
-                env_split = command.split("=")
-                return dict(environment_variable=env_split[0], default_value=env_split[1])
-            elif " " in command:
-                env_split = command.split(" ")
-                return dict(environment_variable=env_split[0], default_value=env_split[1])
+            envs = []
+            if sum(i == "=" for i in command) > 1:
+                for i in command.split(" "):
+                    envs.append(self._parse_envs(command=i))
             else:
-                return dict(environment_variable=command)
+                envs.append(self._parse_envs(command=command))
+            return envs
         elif instruction == "LABEL":
             if len(command.split("=")) > 2:
                 return dict(raw_labels=command)
+            elif len(command.split("=")) == 1:
+                command_split = command.split(" ", 1)
+                return dict(key=command_split[0], value=command_split[1].strip("'").strip('"'))
             else:
                 command_split = command.split("=")
                 return dict(key=command_split[0], value=command_split[1].strip("'").strip('"'))
@@ -138,6 +152,8 @@ class DockerfileParser:
                 "sub_instruction": command_split['executable'],
                 **self._parse_json_notation(command=command_split['arguments'])
             }
+        elif instruction == "MAINTAINER":
+            return dict(maintainer=command)
         else:
             raise NotImplementedError(f"Instruction is not implemented: {instruction}")
 
@@ -177,7 +193,6 @@ class DockerfileParser:
             [i for i in parsed if i["state"] in ["new_command", "comment"]] + multi_line_instructions,
             key=lambda d: d['line_number']['start']
         )
-
         enriched = [dict(
                          line_number=i["line_number"],
                          instruction=i["instruction"],
@@ -269,4 +284,10 @@ class DockerfileParser:
 
 
 if __name__ == "__main__":
-    parser = DockerfileParser(dockerfile="fixtures/Dockerfile")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, default="fixtures/faulty.Dockerfile",
+                        help="Path to Dockerfile location")
+    args = parser.parse_args()
+    parser = DockerfileParser(dockerfile=args.dockerfile)
+    print(parser.df_ast)
+

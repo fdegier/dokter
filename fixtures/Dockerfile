@@ -3,7 +3,7 @@ FROM python:3.7.8
 ARG version
 ARG api_key=secret
 
-ENV VERSION=$version
+ENV VERSION=$version API_KEY_SECRET=$api_key
 
 LABEL foo="bar bar bar"
 LABEL maintainer="Fred"
