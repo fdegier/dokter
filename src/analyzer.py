@@ -67,10 +67,22 @@ class Analyzer:
             self._formatter(data=self.dfp.users[-1], severity="ERROR",
                             rule_info="Error, make sure the last user is not root")
 
+    def rule_4(self):
+        """
+        Verify naming convention of Dockerfile
+        :return:
+        """
+        if self.dockerfile.split(".")[-1] != "Dockerfile":
+            self._formatter(data=None, severity="ERROR",
+                            rule_info="The name of the Dockerfile must be 'Dockerfile' or a pattern of "
+                                      "'<sub_name>.Dockerfile' to ensure its recognized as a Dockerfile and correctly"
+                                      "rendered")
+
     def run(self):
         self.rule_1()
         self.rule_2()
         self.rule_3()
+        self.rule_4()
         return self.warnings, self.errors
 
 
