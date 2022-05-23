@@ -51,13 +51,15 @@ class DockerfileParser:
             return instruction
         return None
 
-    @staticmethod
-    def _get_raw_command(line: str) -> [str, None]:
+    def _get_raw_command(self, line: str) -> [str, None]:
         if line.startswith("#"):
             return line.split("#", 1)[1].replace("#", "")
-        elif line != "":
+        elif line == "":
+            return None
+        elif line.split(" ", 1)[0] in self.valid_instructions:
             return line.split(" ", 1)[1].strip()
-        return None
+        else:
+            return line.strip()
 
     @staticmethod
     def _parse_json_notation(command: str) -> dict:
@@ -74,19 +76,22 @@ class DockerfileParser:
             return dict(executable=run_split[0], arguments=run_split[1])
 
     @staticmethod
-    def _parse_envs(command):
+    def _parse_multi_var(command, key_name):
         if "=" in command:
             env_split = command.split("=")
-            return dict(environment_variable=env_split[0], default_value=env_split[1])
+            return {key_name: env_split[0], 'default_value': env_split[1].strip("'").strip('"')}
         elif " " in command:
             env_split = command.split(" ", 1)
-            return dict(environment_variable=env_split[0], default_value=env_split[1])
+            return {key_name: env_split[0], 'default_value': env_split[1].strip("'").strip('"')}
         else:
-            return dict(environment_variable=command)
+            return {key_name: command}
 
-    def _parse_command(self, instruction: str, command: str) -> dict:
+    def _parse_command(self, instruction: str, command: str) -> [dict, list]:
         if instruction == "COMMENT":
-            return dict(comment=command.strip())
+            comment = command.strip()
+            if comment.startswith("#"):
+                comment = comment.replace("#", "")
+            return dict(comment=comment.strip())
         elif instruction == "FROM":
             if ":" in command:
                 image_split = command.split(":")
@@ -119,23 +124,14 @@ class DockerfileParser:
                 return dict(argument=arg_split[0], default_value=arg_split[1])
             else:
                 return dict(argument=command)
-        elif instruction == "ENV":
+        elif instruction in ["ENV", "LABEL"]:
             envs = []
             if sum(i == "=" for i in command) > 1:
                 for i in command.split(" "):
-                    envs.append(self._parse_envs(command=i))
+                    envs.append(self._parse_multi_var(command=i, key_name=instruction.lower()))
             else:
-                envs.append(self._parse_envs(command=command))
+                envs.append(self._parse_multi_var(command=command, key_name=instruction.lower()))
             return envs
-        elif instruction == "LABEL":
-            if len(command.split("=")) > 2:
-                return dict(raw_labels=command)
-            elif len(command.split("=")) == 1:
-                command_split = command.split(" ", 1)
-                return dict(key=command_split[0], value=command_split[1].strip("'").strip('"'))
-            else:
-                command_split = command.split("=")
-                return dict(key=command_split[0], value=command_split[1].strip("'").strip('"'))
         elif instruction in ["RUN", "ENTRYPOINT", "CMD", "SHELL"]:
             return self._parse_json_notation(command=command)
         elif instruction == "EXPOSE":
