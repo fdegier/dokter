@@ -103,13 +103,13 @@ class DockerfileParser:
             copy_dict = {}
             if copy_split[0].startswith("--chown"):
                 copy_dict["chown"] = copy_split[0].split("=", 1)[1]
-                copy_dict["source"] = copy_split[1]
+                copy_dict["source"] = [copy_split[1]]
                 copy_dict["target"] = copy_split[2]
             elif len(copy_split) > 2:
-                copy_dict["source"] = copy_split[:-1]
+                copy_dict["source"] = [copy_split[:-1]]
                 copy_dict["target"] = copy_split[-1]
             else:
-                copy_dict["source"] = copy_split[0]
+                copy_dict["source"] = [copy_split[0]]
                 copy_dict["target"] = copy_split[1]
             return copy_dict
         elif instruction == "USER":
@@ -179,7 +179,7 @@ class DockerfileParser:
         parsed = [{"line_number": dict(start=line_number + 1),
                    "raw_line": i,
                    "state": self._get_state(line=i),
-                   "instruction": self._get_instruction(line=i),
+                   "instruction": self._get_instruction(line=i.strip()),
                    "raw_command": self._get_raw_command(line=i)
                    }
                   for line_number, i in enumerate(self.df_content)]

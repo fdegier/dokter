@@ -19,11 +19,17 @@ class Analyzer:
         self.raw_text = True if raw_text else False
 
     def _formatter(self, data, severity, rule_info):
-        print(f"{self.dockerfile}:{data['line_number']['start']} - {severity.upper()} - {rule_info}")
+        if data:
+            print(f"{self.dockerfile}:{data['line_number']['start']} - {severity.upper()} - {rule_info}")
+        else:
+            print(f"{self.dockerfile} - {severity.upper()} - {rule_info}")
         if severity.upper() == "ERROR":
             self.errors += 1
         elif severity.upper() == "WARNING":
             self.warnings += 1
+
+    def _return_results(self):
+        return self.warnings, self.errors
 
     def rule_1(self):
         """
@@ -39,7 +45,7 @@ class Analyzer:
         for word in sensitive_files:
             for i in self.dfp.copies:
                 for source in i["instruction_details"]["source"]:
-                    if word in source:
+                    if word in source.lower() or word in i["instruction_details"]["target"].lower():
                         self._formatter(data=i, severity="ERROR",
                                         rule_info="Error, make sure to not copy sensitive information")
 
