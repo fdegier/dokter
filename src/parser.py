@@ -1,29 +1,34 @@
 import argparse
 import ast
+import fnmatch
+import glob
 import os
 
 
 class DockerfileParser:
-    def __init__(self, dockerfile: str = None, raw_text: str = None):
+    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore"):
         self.valid_instructions = ["#", "COMMENT", "FROM", "COPY", "ADD", "WORKDIR", "EXPOSE", "USER", "ARG", "ENV",
                                    "LABEL", "RUN", "CMD", "ENTRYPOINT", "ONBUILD", "HEALTHCHECK", "STOPSIGNAL",
                                    "VOLUME", "SHELL", "MAINTAINER"]
         if dockerfile is not None:
-            self.df_content = self._read_dockerfile(path=dockerfile)
+            self.df_content = self._read_file(path=dockerfile)
         elif raw_text is not None:
             self.df_content = raw_text.splitlines()
         else:
             raise TypeError("Neither a Dockerfile path nor raw text input were provided")
 
+        self.docker_ignore_files = self._read_file(path=dockerignore, docker_ignore=True)
         self.df_ast = self.parse_dockerfile()
 
     @staticmethod
-    def _read_dockerfile(path: str) -> list:
+    def _read_file(path: str, docker_ignore: bool = False) -> list:
         if os.path.exists(path):
             with open(path, 'r') as f:
                 data = f.read().splitlines()
             return data
         else:
+            if docker_ignore:
+                return []
             raise FileNotFoundError(f"Dockerfile not found, path: {path}")
 
     def _get_state(self, line: str) -> str:
@@ -86,6 +91,22 @@ class DockerfileParser:
         else:
             return {key_name: command}
 
+    def _parse_dynamic_files(self, source_locations: list) -> list:
+        to_copy_files = []
+        for source_location in source_locations:
+            if os.path.isfile(path=source_location):
+                to_copy_files.extend([source_location])
+                continue
+            elif source_location.startswith("http"):
+                continue
+            ignored_files = []
+            copy_files = glob.glob(f"./{source_location}/**", recursive=True)
+
+            for pattern in self.docker_ignore_files:
+                ignored_files.extend(fnmatch.filter(names=copy_files, pat=f"*{pattern}*"))
+            to_copy_files.extend([i.split("./", 1)[1] for i in copy_files if i not in ignored_files and not i.endswith(f"{source_location}/")])
+        return sorted(to_copy_files)
+
     def _parse_command(self, instruction: str, command: str) -> [dict, list]:
         if instruction == "COMMENT":
             comment = command.strip()
@@ -103,13 +124,14 @@ class DockerfileParser:
             copy_dict = {}
             if copy_split[0].startswith("--chown"):
                 copy_dict["chown"] = copy_split[0].split("=", 1)[1]
-                copy_dict["source"] = [copy_split[1]]
-                copy_dict["target"] = copy_split[2]
-            elif len(copy_split) > 2:
-                copy_dict["source"] = [copy_split[:-1]]
+                copy_split = copy_split[1:]
+            if len(copy_split) > 2:
+                copy_dict["source"] = copy_split[:-1]
+                copy_dict["parsed_source_files"] = self._parse_dynamic_files(source_locations=copy_split[:-1])
                 copy_dict["target"] = copy_split[-1]
             else:
                 copy_dict["source"] = [copy_split[0]]
+                copy_dict["parsed_source_files"] = self._parse_dynamic_files(source_locations=[copy_split[0]])
                 copy_dict["target"] = copy_split[1]
             return copy_dict
         elif instruction == "USER":
