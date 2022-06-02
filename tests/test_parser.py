@@ -57,7 +57,7 @@ def test_users(raw, user, group):
         ("COPY ../requirements.txt ../README.md .", None, ["../requirements.txt", "../README.md"], ["../README.md", "../requirements.txt", ], "."),
         ("COPY --chown=me:me ../requirements.txt ../README.md .", "me:me", ["../requirements.txt", "../README.md"], ["../README.md", "../requirements.txt", ], "."),
         ("COPY --chown=1000:1234 ../tests /app/app", "1000:1234", ["../tests"], ["../tests/__init__.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
-        ("COPY ../src .", None, ["../src"], ["../src/__init__.py", "../src/analyzer.py", "../src/formatter.py", "../src/main.py", "../src/parser.py"], "."),
+        ("COPY ../src .", None, ["../src"], ["../src/__init__.py", "../src/analyzer.py", "../src/main.py", "../src/parser.py"], "."),
     ]
 )
 def test_copies(raw, chown, source, parsed_source_files, target):
@@ -80,7 +80,7 @@ def test_copies(raw, chown, source, parsed_source_files, target):
         ("ADD --chown=1000:1234 ../tests /app/app", "1000:1234", ["../tests"],
          ["../tests/__init__.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
         ("ADD ../src .", None, ["../src"],
-         ["../src/__init__.py", "../src/analyzer.py", "../src/formatter.py", "../src/main.py", "../src/parser.py"],
+         ["../src/__init__.py", "../src/analyzer.py", "../src/main.py", "../src/parser.py"],
          "."),
         ("ADD http://ipv4.download.thinkbroadband.com/5MB.zip /small_file.mp3", None, ["http://ipv4.download.thinkbroadband.com/5MB.zip"], [], "/small_file.mp3")
     ]
