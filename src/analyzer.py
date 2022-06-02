@@ -200,7 +200,6 @@ class Analyzer:
         rule = inspect.stack()[0][3]
         severity = "WARNING"
         for i in self.dfp.adds:
-            print(i)
             for source in i["instruction_details"]["source"]:
                 # Docker actually checks if a file is compressed regardless of name, but this is a good first step
                 if source.startswith("http") is True:
