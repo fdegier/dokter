@@ -1,7 +1,7 @@
 import argparse
 import inspect
 
-from src.parser import DockerfileParser
+from parser import DockerfileParser
 
 
 class Analyzer:
