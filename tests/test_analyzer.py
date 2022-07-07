@@ -1,6 +1,6 @@
 import pytest
 
-from src.analyzer import Analyzer
+from src.dockter.analyzer import Analyzer
 
 
 @pytest.mark.parametrize(

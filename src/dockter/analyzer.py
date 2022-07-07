@@ -1,11 +1,11 @@
 import argparse
 import inspect
 
-from parser import DockerfileParser
+from src.dockter.parser import DockerfileParser
 
 
 class Analyzer:
-    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ""):
+    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = "", verbose: bool = False):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -18,7 +18,7 @@ class Analyzer:
         self.warnings = 0
 
         self.raw_text = True if raw_text else False
-        self.verbose_explanation = False
+        self.verbose_explanation = verbose
 
     def _formatter(self, rule, data, severity, rule_info):
         if self.verbose_explanation is True:
@@ -268,8 +268,12 @@ class Analyzer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dockerfile", dest="dockerfile",  required=False, default="fixtures/faulty.Dockerfile",
-                        help="Path to Dockerfile location")
+    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=True, help="Path to Dockerfile location")
+    parser.add_argument("-V", "--verbose", dest="verbose", required=False, action="store_true",
+                        help="Verbose information")
     args = parser.parse_args()
-    a = Analyzer(dockerfile=args.dockerfile)
-    a.run()
+    a = Analyzer(**vars(args))
+    warnings, errors = a.run()
+    if errors > 0:
+        exit(1)
+
