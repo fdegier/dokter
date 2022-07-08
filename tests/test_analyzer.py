@@ -4,6 +4,17 @@ from src.dockter.analyzer import Analyzer
 
 
 @pytest.mark.parametrize(
+    "rule,out",
+    [
+        ("not_a_rule", "Rule does not exists")
+    ]
+)
+def test_explain(rule, out):
+    dfp = Analyzer(raw_text="")
+    assert dfp.explain(rule=rule) == out
+
+
+@pytest.mark.parametrize(
     "raw,errors,warnings",
     [
         ("COPY secrets.py . ", 1, 0),

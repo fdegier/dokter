@@ -1,17 +1,21 @@
 import argparse
 import inspect
 
-from src.dockter.parser import DockerfileParser
+from .parser import DockerfileParser
 
 
 class Analyzer:
-    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = "", verbose: bool = False):
+    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = "", verbose: bool = False,
+                 explain_rule: str = None):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
             self.dfp = DockerfileParser(raw_text=raw_text, dockerignore=dockerignore)
+        elif explain_rule is not None:
+            self.explain(rule=explain_rule)
         else:
-            raise TypeError("Neither a Dockerfile path nor raw text input were provided")
+            print("Neither a Dockerfile path nor raw text input were provided")
+            exit(1)
         self.dockerfile = dockerfile
         self.results = []
         self.errors = 0
@@ -265,15 +269,27 @@ class Analyzer:
         # For testing returning the number of warnings and errors, should exit with a code
         return self.warnings, self.errors
 
+    @staticmethod
+    def explain(rule):
+        try:
+            out = f"Explanation for rule '{rule}':\n{getattr(Analyzer, rule.lower()).__doc__.split(':return:', 1)[0]}"
+            print(out)
+        except AttributeError:
+            out = "Rule does not exists"
+            print(out)
+        return out
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=True, help="Path to Dockerfile location")
+    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, help="Path to Dockerfile location")
+    parser.add_argument("-e", "--explain", dest="explain_rule", required=False, help="Explain what a rule entails")
     parser.add_argument("-V", "--verbose", dest="verbose", required=False, action="store_true",
                         help="Verbose information")
     args = parser.parse_args()
     a = Analyzer(**vars(args))
-    warnings, errors = a.run()
-    if errors > 0:
-        exit(1)
+    if args.explain_rule is None:
+        warnings, errors = a.run()
+        if errors > 0:
+            exit(1)
 
