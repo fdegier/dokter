@@ -11,7 +11,7 @@ LABEL maintainer="Fred"
 LABEL foo="bar" maintainer="I, the author"
 
 COPY credentials.txt config.py
-COPY a b
+COPY . b
 
 COPY ../requirements.txt src/main.py /app/
 
@@ -39,7 +39,7 @@ USER me
 WORKDIR /app
 
 ENTRYPOINT ["python"]
-
+# A comment
 ONBUILD ADD c d
 
 HEALTHCHECK CMD cat /tmp.txt
@@ -48,3 +48,5 @@ STOPSIGNAL 1337
 STOPSIGNAL 1338
 
 CMD ["python", "main.py", "--only-data"]
+
+ARG api_key=secret
