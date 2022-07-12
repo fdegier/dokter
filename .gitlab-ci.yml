@@ -13,10 +13,6 @@ include:
 variables:
   DOCKTER_IMAGE: $CI_REGISTRY_IMAGE/dockter
 
-cache:
-  paths:
-    - dist/
-
 flake8:
   image: registry.gitlab.com/pipeline-components/flake8:latest
   stage: lint
@@ -44,6 +40,10 @@ python-build:
     - mv tmp.cfg setup.cfg
     - pip install build twine
     - python -m build
+  cache:
+    key: build-cache
+    paths:
+      - dist/
 
 docker-build:
   image: docker:latest
@@ -54,6 +54,10 @@ docker-build:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
   script:
     - docker build -t $DOCKTER_IMAGE:$CI_COMMIT_SHA -f dockter.Dockerfile .
+  cache:
+    key: build-cache
+    paths:
+      - dist/
   rules:
     - if: $CI_COMMIT_REF_PROTECTED
       changes:
