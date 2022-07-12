@@ -1,0 +1,87 @@
+image: python:3.10
+
+stages:
+  - lint
+  - test
+  - build
+  - scan
+  - publish
+
+include:
+  - template: Security/Container-Scanning.gitlab-ci.yml
+
+variables:
+  DOCKTER_IMAGE: $CI_REGISTRY_IMAGE/dockter
+
+cache:
+  paths:
+    - dist/
+
+flake8:
+  image: registry.gitlab.com/pipeline-components/flake8:latest
+  stage: lint
+  script:
+    - flake8 src
+
+dockter:
+  image: $DOCKTER_IMAGE:latest
+  stage: lint
+  script:
+    - dockter dockter.Dockerfile
+
+pytest:
+  stage: test
+  script:
+    - cd tests
+    - pytest
+
+python-build:
+  stage: build
+  script:
+    - VERSION=$CI_COMMIT_REF envsubst < setup.cfg > tmp.cfg
+    - mv tmp.cfg setup.cfg
+    - pip install build twine
+    - python -m build
+
+docker-build:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker build -t $DOCKTER_IMAGE:$CI_COMMIT_SHA -f dockter.Dockerfile .
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED
+      changes:
+        - dockter.Dockerfile
+
+container_scanning:
+  stage: scan
+  variables:
+    DOCKER_IMAGE: $DOCKTER_IMAGE:$CI_COMMIT_SHA
+
+registry:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: publish
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker pull $DOCKTER_IMAGE:$CI_COMMIT_SHA
+    - docker tag $DOCKTER_IMAGE:$CI_COMMIT_SHA $DOCKTER_IMAGE:$CI_COMMIT_REF_NAME
+    - docker tag $DOCKTER_IMAGE:$CI_COMMIT_SHA $DOCKTER_IMAGE:latest
+    - docker push -a $DOCKTER_IMAGE
+  rules:
+    - if: $CI_COMMIT_TAG
+
+pypi-publish:
+  script:
+    - pip install twine
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
