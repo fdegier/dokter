@@ -282,4 +282,3 @@ class Analyzer:
             out = "Rule does not exists"
         print(out)
         return out
-

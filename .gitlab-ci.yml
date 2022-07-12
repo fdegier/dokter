@@ -1,4 +1,4 @@
-image: python:3.10
+image: python:3.10-slim-buster
 
 stages:
   - lint
@@ -27,17 +27,19 @@ dockter:
   image: $DOCKTER_IMAGE:latest
   stage: lint
   script:
-    - dockter dockter.Dockerfile
+    - dockter -d dockter.Dockerfile
 
 pytest:
   stage: test
   script:
+    - pip install pytest
     - cd tests
     - pytest
 
 python-build:
   stage: build
   script:
+    - apt-get update && apt-get install gettext-base
     - VERSION=$CI_COMMIT_REF envsubst < setup.cfg > tmp.cfg
     - mv tmp.cfg setup.cfg
     - pip install build twine
