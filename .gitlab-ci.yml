@@ -41,7 +41,8 @@ python-build:
   stage: build
   script:
     - apt-get update && apt-get install gettext-base
-    - VERSION=$CI_COMMIT_REF envsubst < setup.cfg > tmp.cfg
+    - echo "Building version $CI_COMMIT_REF_NAME"
+    - VERSION=$CI_COMMIT_REF_NAME envsubst < setup.cfg > tmp.cfg
     - mv tmp.cfg setup.cfg
     - pip install build twine
     - python -m build
