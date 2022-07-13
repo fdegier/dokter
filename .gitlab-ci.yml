@@ -48,7 +48,7 @@ python-build:
     - mv tmp.cfg setup.cfg
     - python -m build
   cache:
-    key: build-cache
+    key: build-cache-$CI_COMMIT_SHA
     paths:
       - dist/
   rules:
@@ -65,7 +65,7 @@ docker-build:
     - docker build -t $DOCKTER_IMAGE:$CI_COMMIT_SHA -f dockter.Dockerfile .
     - docker push $DOCKTER_IMAGE:$CI_COMMIT_SHA
   cache:
-    key: build-cache
+    key: build-cache-$CI_COMMIT_SHA
     paths:
       - dist/
   rules:
@@ -98,16 +98,11 @@ registry:
 pypi-publish:
   stage: publish
   script:
-    - apt-get update && apt-get install gettext-base
-    - echo "Building version $CI_COMMIT_REF_NAME"
-    - VERSION=$CI_COMMIT_REF_NAME envsubst < setup.cfg > tmp.cfg
-    - pip install build twine
-    - mv tmp.cfg setup.cfg
-    - python -m build
+    - pip install twine
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/dockter-$CI_COMMIT_REF_NAME*
 #    - TWINE_PASSWORD=${PYPI_TOKEN} TWINE_USERNAME=__token__ python -m twine upload dist/*
   cache:
-    key: build-cache
+    key: build-cache-$CI_COMMIT_SHA
     paths:
       - dist/
   rules:
