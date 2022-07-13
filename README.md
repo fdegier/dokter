@@ -81,4 +81,13 @@ dockter -v -d path/to/Dockerfile
 ```
 
 ### CI/CD
-Todo
+
+Usage in GitLab CI example:
+
+```yaml
+dockter:
+  image: registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dockter/dockter:latest
+  stage: lint
+  script:
+    - dockter -d Dockerfile
+```
