@@ -303,9 +303,7 @@ class DockerfileParser:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, default="fixtures/faulty.Dockerfile",
-                        help="Path to Dockerfile location")
+    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, help="Path to Dockerfile location")
     args = parser.parse_args()
     parser = DockerfileParser(dockerfile=args.dockerfile)
     print(parser.df_ast)
-

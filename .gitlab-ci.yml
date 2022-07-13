@@ -1,0 +1,102 @@
+image: python:3.10-slim-buster
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+stages:
+  - lint
+  - test
+  - build
+  - scan
+  - publish
+
+include:
+  - template: Security/Container-Scanning.gitlab-ci.yml
+
+variables:
+  DOCKTER_IMAGE: $CI_REGISTRY_IMAGE/dockter
+
+flake8:
+  image: registry.gitlab.com/pipeline-components/flake8:latest
+  stage: lint
+  script:
+    - flake8 src
+
+dockter:
+  image: $DOCKTER_IMAGE:latest
+  stage: lint
+  script:
+    - dockter -d dockter.Dockerfile
+
+pytest:
+  stage: test
+  script:
+    - pip install pytest
+    - cd tests
+    - pytest
+
+python-build:
+  stage: build
+  script:
+    - apt-get update && apt-get install gettext-base
+    - VERSION=$CI_COMMIT_REF envsubst < setup.cfg > tmp.cfg
+    - mv tmp.cfg setup.cfg
+    - pip install build twine
+    - python -m build
+  cache:
+    key: build-cache
+    paths:
+      - dist/
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED
+
+docker-build:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker build -t $DOCKTER_IMAGE:$CI_COMMIT_SHA -f dockter.Dockerfile .
+    - docker push $DOCKTER_IMAGE:$CI_COMMIT_SHA
+  cache:
+    key: build-cache
+    paths:
+      - dist/
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED
+
+container_scanning:
+  stage: scan
+  variables:
+    DOCKER_IMAGE: $DOCKTER_IMAGE:$CI_COMMIT_SHA
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED
+
+registry:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: publish
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker pull $DOCKTER_IMAGE:$CI_COMMIT_SHA
+    - docker tag $DOCKTER_IMAGE:$CI_COMMIT_SHA $DOCKTER_IMAGE:$CI_COMMIT_REF_NAME
+    - docker tag $DOCKTER_IMAGE:$CI_COMMIT_SHA $DOCKTER_IMAGE:latest
+    - docker push -a $DOCKTER_IMAGE
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED
+
+pypi-publish:
+  script:
+    - pip install twine
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+    - TWINE_PASSWORD=${PYPI_TOKEN} TWINE_USERNAME=__token__ python -m twine upload dist/*
+  rules:
+    - if: $CI_COMMIT_TAG

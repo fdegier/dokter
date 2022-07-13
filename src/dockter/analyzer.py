@@ -1,12 +1,11 @@
-import argparse
 import inspect
 
 from .parser import DockerfileParser
 
 
 class Analyzer:
-    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = "", verbose: bool = False,
-                 explain_rule: str = None):
+    def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
+                 verbose: bool = False, explain_rule: str = None):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -30,7 +29,8 @@ class Analyzer:
         else:
             rule_info = rule_info.splitlines()[0]
         if data:
-            self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} - {severity.upper():<7} - {rule_info}")
+            self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} "
+                                f"- {severity.upper():<7} - {rule_info}")
         else:
             self.results.append(f"{self.dockerfile}:0   - {rule.upper()} - {severity.upper():<7} - {rule_info}")
         if severity.upper() == "ERROR":
@@ -65,7 +65,7 @@ class Analyzer:
 
     def dfa002(self):
         """
-        Usa a .dockerignore file to exclude files being copied over.
+        Use a .dockerignore file to exclude files being copied over.
 
         By using a .dockerignore files, the build will generally be faster because it has to transfer less data to the
         daemon, it also helps prevent copying sensitive files. For more information see:
@@ -163,9 +163,10 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
-        last_user = self.dfp.users[-1]
-        if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
-            self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005))
+        if len(self.dfp.users) > 0:
+            last_user = self.dfp.users[-1]
+            if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
+                self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005))
 
     def dfa006(self):
         """
@@ -250,8 +251,13 @@ class Analyzer:
         rule = inspect.stack()[0][3]
         severity = "ERROR"
 
-        instructions_past_entrypoint = self.dfp.df_ast[self.dfp.instructions.index("ENTRYPOINT")+1:]
-        instructions_past_cmd = self.dfp.df_ast[self.dfp.instructions.index("CMD")+1:]
+        instructions_past_entrypoint = []
+        if "ENTRYPOINT" in self.dfp.instructions:
+            instructions_past_entrypoint = self.dfp.df_ast[self.dfp.instructions.index("ENTRYPOINT")+1:]
+
+        instructions_past_cmd = []
+        if "CMD" in self.dfp.instructions:
+            instructions_past_cmd = self.dfp.df_ast[self.dfp.instructions.index("CMD")+1:]
 
         for i in instructions_past_entrypoint + instructions_past_cmd:
             if i["instruction"] not in ["CMD", "COMMENT"]:
@@ -265,7 +271,6 @@ class Analyzer:
         # Print the results
         for i in sorted(set(self.results)):
             print(i)
-
         # For testing returning the number of warnings and errors, should exit with a code
         return self.warnings, self.errors
 
@@ -273,23 +278,7 @@ class Analyzer:
     def explain(rule):
         try:
             out = f"Explanation for rule '{rule}':\n{getattr(Analyzer, rule.lower()).__doc__.split(':return:', 1)[0]}"
-            print(out)
         except AttributeError:
             out = "Rule does not exists"
-            print(out)
+        print(out)
         return out
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, help="Path to Dockerfile location")
-    parser.add_argument("-e", "--explain", dest="explain_rule", required=False, help="Explain what a rule entails")
-    parser.add_argument("-V", "--verbose", dest="verbose", required=False, action="store_true",
-                        help="Verbose information")
-    args = parser.parse_args()
-    a = Analyzer(**vars(args))
-    if args.explain_rule is None:
-        warnings, errors = a.run()
-        if errors > 0:
-            exit(1)
-
