@@ -68,7 +68,7 @@ It is suggested to always use both, but at least run it where you are actually b
 
 You will need to install `Dockter` from `pip`
 ```bash
-pip install --upgrade dockter
+pip install --upgrade dockter --extra-index-url https://gitlab.com/api/v4/projects/36078023/packages/pypi/simple
 dockter -d path/to/Dockerfile
 ```
 If you want more information you can either run it in verbose mode or ask to explain a specific rule
@@ -78,6 +78,12 @@ docker -e dfa001
 
 # Run in verbose mode (this will be a lot of text)
 dockter -v -d path/to/Dockerfile
+```
+
+You can also use docker:
+
+```bash
+docker run -it -v $(pwd):/app registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dockter/dockter:latest dockter -d docter.Dockerfile
 ```
 
 ### CI/CD
