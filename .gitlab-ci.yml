@@ -9,6 +9,7 @@ stages:
   - lint
   - test
   - build
+  - docker
   - scan
   - publish
 
@@ -55,7 +56,7 @@ python-build:
 
 docker-build:
   image: docker:latest
-  stage: build
+  stage: docker
   services:
     - docker:dind
   before_script:
