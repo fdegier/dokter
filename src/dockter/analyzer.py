@@ -1,11 +1,14 @@
 import inspect
+import json
+import os
+import time
 
 from .parser import DockerfileParser
 
 
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
-                 verbose: bool = False, explain_rule: str = None):
+                 verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -17,22 +20,42 @@ class Analyzer:
             exit(1)
         self.dockerfile = dockerfile
         self.results = []
+        self.results_code_climate = []
         self.errors = 0
         self.warnings = 0
 
         self.raw_text = True if raw_text else False
         self.verbose_explanation = verbose
+        self.gitlab_codequality = gitlab_codequality
 
-    def _formatter(self, rule, data, severity, rule_info):
+    def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
+        cc_severity = {"ERROR": "blocker", "WARNING": "info"}
+        cc_entry = {
+            "location": {
+                "lines": {
+                    "begin": data["line_number"]["start"],
+                    "end": data["line_number"]["end"]
+                },
+                "path": self.dockerfile
+            },
+            # "fingerprint": "abc",
+            "severity": cc_severity[severity.upper()],
+            "type": "issue",
+            "categories": categories,
+            "check_name": rule.upper(),
+            "description": rule_info.splitlines()[0]
+        }
+        self.results_code_climate.append(cc_entry)
+
         if self.verbose_explanation is True:
             rule_info = f"\n{rule_info.split(':return:', 1)[0]}"
         else:
             rule_info = rule_info.splitlines()[0]
-        if data:
-            self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} "
-                                f"- {severity.upper():<7} - {rule_info}")
-        else:
-            self.results.append(f"{self.dockerfile}:0   - {rule.upper()} - {severity.upper():<7} - {rule_info}")
+        # if data:
+        self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} "
+                            f"- {severity.upper():<7} - {rule_info}")
+        # else:
+        #     self.results.append(f"{self.dockerfile}:0   - {rule.upper()} - {severity.upper():<7} - {rule_info}")
         if severity.upper() == "ERROR":
             self.errors += 1
         elif severity.upper() == "WARNING":
@@ -50,6 +73,7 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Security"]
         sensitive_files = [
             ".env", ".pem", ".properties"
             "settings", "config", "secrets", "application", "dev", "appsettings", "credentials", "default", "strings",
@@ -60,7 +84,7 @@ class Analyzer:
             for i in self.dfp.copies:
                 for source in i["instruction_details"]["source"]:
                     if word in source.lower() or word in i["instruction_details"]["target"].lower():
-                        self._formatter(rule=rule, data=i, severity=severity,
+                        self._formatter(rule=rule, data=i, severity=severity, categories=categories,
                                         rule_info=inspect.getdoc(self.dfa001))
 
     def dfa002(self):
@@ -74,8 +98,11 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "WARNING"
+        categories = ["Security"]
         if len(self.dfp.docker_ignore_files) == 0:
-            self._formatter(data=None, rule=rule, severity=severity, rule_info=inspect.getdoc(self.dfa002))
+            data = {"line_number": {"start": 0, "end": 0}}
+            self._formatter(data=data, rule=rule, severity=severity, rule_info=inspect.getdoc(self.dfa002),
+                            categories=categories)
 
     def dfa003(self):
         """
@@ -100,10 +127,12 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Security"]
         for i in self.dfp.copies:
             for source in i["instruction_details"]["source"]:
                 if source == ".":
-                    self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa003))
+                    self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa003),
+                                    categories=categories)
 
     def dfa004(self):
         """
@@ -128,6 +157,7 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Security"]
 
         sensitive_words = [
             "key", "secret", "token", "pass"
@@ -136,7 +166,8 @@ class Analyzer:
         for word in sensitive_words:
             for i in self.dfp.args:
                 if word in i["instruction_details"]["argument"]:
-                    self._formatter(data=i, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa004))
+                    self._formatter(data=i, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa004),
+                                    categories=categories)
 
     def dfa005(self):
         """
@@ -163,10 +194,12 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Security"]
         if len(self.dfp.users) > 0:
             last_user = self.dfp.users[-1]
             if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
-                self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005))
+                self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005),
+                                categories=categories)
 
     def dfa006(self):
         """
@@ -192,8 +225,11 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "WARNING"
+        categories = ["Style"]
         if self.dockerfile.split(".")[-1] != "Dockerfile":
-            self._formatter(rule=rule, data=None, severity=severity, rule_info=inspect.getdoc(self.dfa006))
+            data = {"line_number": {"start": 0, "end": 0}}
+            self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa006),
+                            categories=categories)
 
     def dfa007(self):
         """
@@ -204,6 +240,7 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "WARNING"
+        categories = ["Bug Risk"]
         for i in self.dfp.adds:
             for source in i["instruction_details"]["source"]:
                 # Docker actually checks if a file is compressed regardless of name, but this is a good first step
@@ -212,7 +249,8 @@ class Analyzer:
                 elif source.endswith(".gz") is True:
                     pass
                 else:
-                    self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa007))
+                    self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa007),
+                                    categories=categories)
 
     def dfa008(self):
         """
@@ -221,9 +259,10 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Performance"]
         for i, instruction in enumerate(self.dfp.instructions):
             if instruction == "RUN" and instruction == self.dfp.df_ast[i - 1]["instruction"]:
-                self._formatter(rule=rule, severity=severity, data=self.dfp.df_ast[i],
+                self._formatter(rule=rule, severity=severity, data=self.dfp.df_ast[i], categories=categories,
                                 rule_info=inspect.getdoc(self.dfa008))
 
     def dfa009(self):
@@ -240,8 +279,11 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "WARNING"
+        categories = ["Performance"]
         if "HEALTHCHECK" not in self.dfp.instructions:
-            self._formatter(rule=rule, data=None, severity=severity, rule_info=inspect.getdoc(self.dfa010))
+            data = {"line_number": {"start": 0, "end": 0}}
+            self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa010),
+                            categories=categories)
 
     def dfa011(self):
         """
@@ -250,6 +292,7 @@ class Analyzer:
         """
         rule = inspect.stack()[0][3]
         severity = "ERROR"
+        categories = ["Style"]
 
         instructions_past_entrypoint = []
         if "ENTRYPOINT" in self.dfp.instructions:
@@ -261,7 +304,8 @@ class Analyzer:
 
         for i in instructions_past_entrypoint + instructions_past_cmd:
             if i["instruction"] not in ["CMD", "COMMENT"]:
-                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011))
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
+                                categories=categories)
 
     def run(self):
         # A bit of a hack to run all the rules
@@ -271,7 +315,13 @@ class Analyzer:
         # Print the results
         for i in sorted(set(self.results)):
             print(i)
-        # For testing returning the number of warnings and errors, should exit with a code
+
+        if self.gitlab_codequality:
+            report_location = f"dockter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
+            with open(report_location, "w") as f:
+                f.write(json.dumps(self.results_code_climate))
+                print(f"\nCode Quality report written to: {report_location}")
+
         return self.warnings, self.errors
 
     @staticmethod
