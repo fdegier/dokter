@@ -4,6 +4,7 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
+    - when: always
 
 stages:
   - lint
@@ -52,7 +53,7 @@ python-build:
     paths:
       - dist/
   rules:
-    - if: $CI_COMMIT_REF_PROTECTED
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 docker-build:
   image: docker:latest
@@ -69,14 +70,14 @@ docker-build:
     paths:
       - dist/
   rules:
-    - if: $CI_COMMIT_REF_PROTECTED
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 container_scanning:
   stage: scan
   variables:
     DOCKER_IMAGE: $DOCKTER_IMAGE:$CI_COMMIT_SHA
   rules:
-    - if: $CI_COMMIT_REF_PROTECTED
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 registry:
   image: docker:latest
@@ -93,7 +94,7 @@ registry:
     - docker tag $DOCKTER_IMAGE:$CI_COMMIT_SHA $DOCKTER_IMAGE:latest
     - docker push -a $DOCKTER_IMAGE
   rules:
-    - if: $CI_COMMIT_REF_PROTECTED
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 pypi-publish:
   stage: publish
