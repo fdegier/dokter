@@ -49,12 +49,17 @@ pytest:
     - coverage run -m pytest
     - coverage report
     - coverage xml
+    - mkdir ../reports
+    - mv coverage.xml ../reports/coverage.xml
+    - pytest --junitxml=report.xml
+    - mv report.xml ../reports/report.xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
     reports:
+      junit: reports/report.xml
       coverage_report:
         coverage_format: cobertura
-        path: tests/coverage.xml
+        path: reports/coverage.xml
 
 python-build:
   stage: build
@@ -95,6 +100,8 @@ docker-test:
   script:
     - docker run $DOCKTER_IMAGE:$CI_COMMIT_SHA -d dockter.Dockerfile -c
     - test -f dockter-$CI_COMMIT_SHA.json
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 container_scanning:
   stage: post-build-test
