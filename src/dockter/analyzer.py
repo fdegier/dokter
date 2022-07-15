@@ -51,11 +51,10 @@ class Analyzer:
             rule_info = f"\n{rule_info.split(':return:', 1)[0]}"
         else:
             rule_info = rule_info.splitlines()[0]
-        # if data:
+
         self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} "
                             f"- {severity.upper():<7} - {rule_info}")
-        # else:
-        #     self.results.append(f"{self.dockerfile}:0   - {rule.upper()} - {severity.upper():<7} - {rule_info}")
+
         if severity.upper() == "ERROR":
             self.errors += 1
         elif severity.upper() == "WARNING":

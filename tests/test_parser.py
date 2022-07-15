@@ -51,12 +51,12 @@ def test_users(raw, user, group):
 @pytest.mark.parametrize(
     "raw,chown,source,parsed_source_files,target",
     [
-        ("COPY . .", None, ["."], ["./__init__.py", "./test_analyzer.py", "./test_parser.py"], "."),
-        ("COPY --chown=me:me . /app", "me:me", ["."], ["./__init__.py", "./test_analyzer.py", "./test_parser.py"], "/app"),
+        ("COPY . .", None, ["."], ["./__init__.py", "./integration", "./integration/test_dockter.py", "./test_analyzer.py", "./test_parser.py"], "."),
+        ("COPY --chown=me:me . /app", "me:me", ["."], ["./__init__.py", "./integration", "./integration/test_dockter.py", "./test_analyzer.py", "./test_parser.py"], "/app"),
         ("COPY ../requirements.txt .", None, ["../requirements.txt"], ["../requirements.txt"], "."),
         ("COPY ../requirements.txt ../README.md .", None, ["../requirements.txt", "../README.md"], ["../README.md", "../requirements.txt", ], "."),
         ("COPY --chown=me:me ../requirements.txt ../README.md .", "me:me", ["../requirements.txt", "../README.md"], ["../README.md", "../requirements.txt", ], "."),
-        ("COPY --chown=1000:1234 ../tests /app/app", "1000:1234", ["../tests"], ["../tests/__init__.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
+        ("COPY --chown=1000:1234 ../tests /app/app", "1000:1234", ["../tests"], ["../tests/__init__.py", "../tests/integration", "../tests/integration/test_dockter.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
         ("COPY ../src/dockter .", None, ["../src/dockter"], ["../src/dockter/__init__.py", "../src/dockter/analyzer.py", "../src/dockter/main.py", "../src/dockter/parser.py"], "."),
     ]
 )
@@ -73,12 +73,12 @@ def test_copies(raw, chown, source, parsed_source_files, target):
 @pytest.mark.parametrize(
     "raw,chown,source,parsed_source_files,target",
     [
-        ("ADD . .", None, ["."], ["./__init__.py", "./test_analyzer.py", "./test_parser.py"], "."),
-        ("ADD --chown=me:me . /app", "me:me", ["."], ["./__init__.py", "./test_analyzer.py", "./test_parser.py"],
+        ("ADD . .", None, ["."], ["./__init__.py", "./integration", "./integration/test_dockter.py", "./test_analyzer.py", "./test_parser.py"], "."),
+        ("ADD --chown=me:me . /app", "me:me", ["."], ["./__init__.py", "./integration", "./integration/test_dockter.py", "./test_analyzer.py", "./test_parser.py"],
          "/app"),
         ("ADD ../requirements.txt .", None, ["../requirements.txt"], ["../requirements.txt"], "."),
         ("ADD --chown=1000:1234 ../tests /app/app", "1000:1234", ["../tests"],
-         ["../tests/__init__.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
+         ["../tests/__init__.py", "../tests/integration", "../tests/integration/test_dockter.py", "../tests/test_analyzer.py", "../tests/test_parser.py"], "/app/app"),
         ("ADD ../src/dockter .", None, ["../src/dockter"],
          ["../src/dockter/__init__.py", "../src/dockter/analyzer.py", "../src/dockter/main.py", "../src/dockter/parser.py"],
          "."),

@@ -11,7 +11,7 @@ stages:
   - test
   - build
   - docker
-  - scan
+  - post-build-test
   - publish
 
 include:
@@ -37,16 +37,24 @@ dockter:
     when: always
     reports:
       codequality:
-        - "dockter-*.json"
+        - "dockter-$CI_COMMIT_SHA.json"
     paths:
-      - "dockter-*.json"
+      - "dockter-$CI_COMMIT_SHA.json"
 
 pytest:
   stage: test
   script:
-    - pip install pytest
+    - pip install pytest pytest-cov
     - cd tests
-    - pytest
+    - coverage run -m pytest
+    - coverage report
+    - coverage xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: tests/coverage.xml
 
 python-build:
   stage: build
@@ -81,8 +89,15 @@ docker-build:
   rules:
     - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
+docker-test:
+  image: docker:latest
+  stage: post-build-test
+  script:
+    - docker run $DOCKTER_IMAGE:$CI_COMMIT_SHA -d dockter.Dockerfile -c
+    - test -f dockter-$CI_COMMIT_SHA.json
+
 container_scanning:
-  stage: scan
+  stage: post-build-test
   variables:
     DOCKER_IMAGE: $DOCKTER_IMAGE:$CI_COMMIT_SHA
   rules:
