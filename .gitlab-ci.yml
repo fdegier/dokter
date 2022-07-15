@@ -95,7 +95,8 @@ docker-build:
     - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 docker-test:
-  image: docker:20.10.16-dind
+  services:
+    - docker:20.10.16-dind
   stage: post-build-test
   script:
     - docker run $DOCKTER_IMAGE:$CI_COMMIT_SHA -d dockter.Dockerfile -c
