@@ -100,7 +100,7 @@ docker-test:
     - docker:dind
   stage: post-build-test
   script:
-    - docker run $DOCKTER_IMAGE:$CI_COMMIT_SHA -d dockter.Dockerfile -c
+    - docker run $DOCKTER_IMAGE:$CI_COMMIT_SHA dockter -d dockter.Dockerfile -c
     - test -f dockter-$CI_COMMIT_SHA.json
   rules:
     - if: $CI_COMMIT_REF_PROTECTED == 'true'
