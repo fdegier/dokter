@@ -104,7 +104,8 @@ class DockerfileParser:
 
             for pattern in self.docker_ignore_files:
                 ignored_files.extend(fnmatch.filter(names=copy_files, pat=f"*{pattern}*"))
-            to_copy_files.extend([i.split("./", 1)[1] for i in copy_files if i not in ignored_files and not i.endswith(f"{source_location}/")])
+            to_copy_files.extend([i.split("./", 1)[1] for i in copy_files if i not in ignored_files and
+                                  not i.endswith(f"{source_location}/")])
         return sorted(to_copy_files)
 
     def _parse_command(self, instruction: str, command: str) -> [dict, list]:
@@ -198,7 +199,7 @@ class DockerfileParser:
         return result
 
     def parse_dockerfile(self) -> list[dict]:
-        parsed = [{"line_number": dict(start=line_number + 1),
+        parsed = [{"line_number": dict(start=line_number + 1, end=line_number + 1),
                    "raw_line": i,
                    "state": self._get_state(line=i),
                    "instruction": self._get_instruction(line=i.strip()),
