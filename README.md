@@ -97,3 +97,23 @@ dockter:
   script:
     - dockter -d Dockerfile
 ```
+
+### GitLab Code Quality
+
+To use the output in GitLab code quality you can use below as an example:
+```yaml
+dockter:
+  image: registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dockter/dockter:latest
+  stage: lint
+  script:
+    - dockter -d dockter.Dockerfile -c
+  artifacts:
+    name: "$CI_JOB_NAME artifacts from $CI_PROJECT_NAME on $CI_COMMIT_REF_SLUG"
+    expire_in: 1 day
+    when: always
+    reports:
+      codequality:
+        - "dockter-$CI_COMMIT_SHA.json"
+    paths:
+      - "dockter-$CI_COMMIT_SHA.json"
+```
