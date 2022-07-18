@@ -74,7 +74,7 @@ dockter -d path/to/Dockerfile
 If you want more information you can either run it in verbose mode or ask to explain a specific rule
 ```bash
 # Explain rule dfa001
-docker -e dfa001
+dockter -e dfa001
 
 # Run in verbose mode (this will be a lot of text)
 dockter -v -d path/to/Dockerfile
