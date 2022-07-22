@@ -164,7 +164,7 @@ class Analyzer:
 
         for word in sensitive_words:
             for i in self.dfp.args:
-                if word in i["instruction_details"]["argument"]:
+                if word in i["instruction_details"]["argument"].lower():
                     self._formatter(data=i, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa004),
                                     categories=categories)
 

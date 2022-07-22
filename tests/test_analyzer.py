@@ -71,6 +71,7 @@ def test_dfa003(raw, errors, warnings):
     "arguments,errors,warnings",
     [
         ("ARG api-key", 1, 0),
+        ("ARG API-KEY", 1, 0),
         ("ARG api-secret=really-secret", 1, 0),
         ("ARG build-id", 0, 0),
         ("ARG owner='me'", 0, 0)
