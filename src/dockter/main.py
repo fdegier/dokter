@@ -9,6 +9,10 @@ def dockter():
     parser.add_argument("-e", "--explain", dest="explain_rule", required=False, help="Explain what a rule entails")
     parser.add_argument("-c", "--gitlab-codequality", dest="gitlab_codequality", action="store_true", required=False,
                         help="Save the output in a JSON formatted for GitLab Code Quality reports")
+    parser.add_argument("-w", "--write-dockerfile", dest="write_df", action="store_true", required=False,
+                        help="Save the output in a JSON formatted for GitLab Code Quality reports")
+    parser.add_argument("-s", "--show-dockerfile", dest="show_df", action="store_true", required=False,
+                        help="Save the output in a JSON formatted for GitLab Code Quality reports")
     parser.add_argument("-V", "--verbose", dest="verbose", required=False, action="store_true",
                         help="Verbose information")
     args = parser.parse_args()
