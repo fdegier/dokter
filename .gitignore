@@ -1,4 +1,5 @@
 .idea
+research/data/
 cmake-build-*/
 .idea/**/mongoSettings.xml
 *.iws

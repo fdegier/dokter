@@ -8,7 +8,8 @@ from .parser import DockerfileParser
 
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
-                 verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False):
+                 verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False,
+                 write_df: bool = False, show_df: bool = False):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -19,6 +20,7 @@ class Analyzer:
             print("Neither a Dockerfile path nor raw text input were provided")
             exit(1)
         self.dockerfile = dockerfile
+        self.raw_text = raw_text
         self.results = []
         self.results_code_climate = []
         self.errors = 0
@@ -27,6 +29,8 @@ class Analyzer:
         self.raw_text = True if raw_text else False
         self.verbose_explanation = verbose
         self.gitlab_codequality = gitlab_codequality
+        self.show_dockerfile = show_df
+        self.write_dockerfile = write_df
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
         cc_severity = {"ERROR": "blocker", "WARNING": "info"}
@@ -38,7 +42,6 @@ class Analyzer:
                 },
                 "path": self.dockerfile
             },
-            # "fingerprint": "abc",
             "severity": cc_severity[severity.upper()],
             "type": "issue",
             "categories": categories,
@@ -164,7 +167,7 @@ class Analyzer:
 
         for word in sensitive_words:
             for i in self.dfp.args:
-                if word in i["instruction_details"]["argument"]:
+                if word.lower() in i["instruction_details"]["argument"].lower():
                     self._formatter(data=i, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa004),
                                     categories=categories)
 
@@ -250,6 +253,7 @@ class Analyzer:
                 else:
                     self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa007),
                                     categories=categories)
+                    i["formatted"] = i["formatted"].replace("ADD ", "COPY ")
 
     def dfa008(self):
         """
@@ -259,10 +263,17 @@ class Analyzer:
         rule = inspect.stack()[0][3]
         severity = "ERROR"
         categories = ["Performance"]
+        first_run = None
         for i, instruction in enumerate(self.dfp.instructions):
             if instruction == "RUN" and instruction == self.dfp.df_ast[i - 1]["instruction"]:
                 self._formatter(rule=rule, severity=severity, data=self.dfp.df_ast[i], categories=categories,
                                 rule_info=inspect.getdoc(self.dfa008))
+                if first_run is None:
+                    first_run = self.dfp.df_ast[i - 1]
+                corrected = self.dfp.df_ast[i]['formatted'].replace(f"{self.dfp.df_ast[i]['instruction']} ", '')
+                first_run["formatted"] = first_run["formatted"][:-1] + " && \\\n" + "\t" + corrected
+                # Delete the unneeded RUN statement
+                del self.dfp.df_ast[i]["formatted"]
 
     def dfa009(self):
         """
@@ -306,6 +317,11 @@ class Analyzer:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
                                 categories=categories)
 
+    @staticmethod
+    def _write_file(location, data):
+        with open(location, "w") as f:
+            f.write(data)
+
     def run(self):
         # A bit of a hack to run all the rules
         for f in [i for i, f in inspect.getmembers(object=Analyzer) if i.startswith("dfa")]:
@@ -317,9 +333,21 @@ class Analyzer:
 
         if self.gitlab_codequality:
             report_location = f"dockter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
-            with open(report_location, "w") as f:
-                f.write(json.dumps(self.results_code_climate))
-                print(f"\nCode Quality report written to: {report_location}")
+            self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
+            print(f"\nCode Quality report written to: {report_location}")
+
+        new_dockerfile = [i["formatted"] for i in self.dfp.df_ast if i.get("formatted")]
+        if self.write_dockerfile:
+            report_location = "Dockerfile"
+            if self.dockerfile is not None:
+                report_location = self.dockerfile
+            self._write_file(location=report_location, data="\n".join(new_dockerfile))
+            print(f"\nNew Dockerfile written to: {report_location}")
+
+        if self.show_dockerfile:
+            print("This is the new Dockerfile:\n")
+            for i in new_dockerfile:
+                print(i)
 
         return self.warnings, self.errors
 

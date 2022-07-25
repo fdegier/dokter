@@ -217,7 +217,9 @@ class DockerfileParser:
                          instruction=i["instruction"],
                          instruction_details=self._parse_command(instruction=i["instruction"],
                                                                  command=i["raw_command"]),
-                         _raw=i["raw_line"]
+                         _raw=i["raw_line"],
+                         formatted="{} {}\n".format(i['instruction'], i['raw_command'].replace('\\', '\\\n\t')) if
+                         i["instruction"] == "RUN" else f'{i["raw_line"]}\n'
                          )
                     for i in single_line_instructions]
         return enriched
