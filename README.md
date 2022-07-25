@@ -86,6 +86,26 @@ You can also use docker:
 docker run -it -v $(pwd):/app registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dockter/dockter:latest dockter -d docter.Dockerfile
 ```
 
+### Dockerfile formatting
+
+`Dockter` is capable of creating a pretty formatted Dockerfile, as well as autocorrecting some errors found by the 
+analyzer. It can either show `-s` or write `-w` the file, in case of writing it will overwrite the given Dockerfile, so
+it's easier to review and commit changes. 
+
+```bash
+dockter -d Dockerfile -w
+```
+
+In case of showing, `Dockter` will first output the analysis report followed by the Dockerfile, at this moment it will 
+output a file with some errors corrected but not all. 
+
+```bash
+dockter -d Dockerfile -s
+```
+
+You can also combine `-s` and `-w` to both show and write the Dockerfile.
+
+
 ### CI/CD
 
 Usage in GitLab CI example:
@@ -106,7 +126,7 @@ dockter:
   image: registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dockter/dockter:latest
   stage: lint
   script:
-    - dockter -d dockter.Dockerfile -c
+    - dockter -d dockter.Dockerfile --gitlab-codequality
   artifacts:
     name: "$CI_JOB_NAME artifacts from $CI_PROJECT_NAME on $CI_COMMIT_REF_SLUG"
     expire_in: 1 day
