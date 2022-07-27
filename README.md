@@ -137,3 +137,26 @@ dockter:
     paths:
       - "dockter-$CI_COMMIT_SHA.json"
 ```
+
+### Gotcha's
+
+Below are some subjects that could raise questions, errors. 
+
+#### Jinja templating
+
+Jinja is ignored, what will happen is, the templated lines will get ignored and the Docker instructions 
+will be parsed. 
+
+Example:
+```Dockerfile
+FROM scratch
+
+{% if something %} # This line will be considered empty
+RUN echo "some command" # This line will be parsed
+{% endif %} # This line will be considered empty
+```
+
+#### Here strings (EOF)
+
+At this moment if you have a `here string` in your bash command, the Dockerfile will fail, it can not be parsed. Support
+will be added in the future.
