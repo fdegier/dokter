@@ -82,7 +82,10 @@ class DockerfileParser:
         except (SyntaxError, ValueError):
             run_eval = command
         if isinstance(run_eval, list):
-            return dict(executable=run_eval[:1], arguments=run_eval[1:])
+            if len(run_eval) > 0:
+                return dict(executable=run_eval[0], arguments=run_eval[1:])
+            else:
+                return dict(executable=None, arguments=run_eval[1:])
         else:
             run_split = command.split(" ", 1)
             if len(run_split) == 1:
