@@ -5,6 +5,14 @@ import glob
 import os
 
 
+class ParsingError(Exception):
+    """
+    Dockter is unable to parse this Dockerfile, are you sure its valid syntax?
+    """
+    def __str__(self):
+        return self.__doc__
+
+
 class DockerfileParser:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore"):
         self.valid_instructions = ["#", "COMMENT", "FROM", "COPY", "ADD", "WORKDIR", "EXPOSE", "USER", "ARG", "ENV",
@@ -32,6 +40,7 @@ class DockerfileParser:
             raise FileNotFoundError(f"Dockerfile not found, path: {path}")
 
     def _get_state(self, line: str) -> str:
+        line = line.rstrip()
         if line == "":
             state = "blank"
         elif line.strip().startswith("#"):
@@ -73,7 +82,10 @@ class DockerfileParser:
         except (SyntaxError, ValueError):
             run_eval = command
         if isinstance(run_eval, list):
-            return dict(executable=run_eval[0], arguments=run_eval[1:])
+            if len(run_eval) > 0:
+                return dict(executable=run_eval[0], arguments=run_eval[1:])
+            else:
+                return dict(executable=None, arguments=run_eval[1:])
         else:
             run_split = command.split(" ", 1)
             if len(run_split) == 1:
@@ -109,11 +121,16 @@ class DockerfileParser:
         return sorted(to_copy_files)
 
     def _parse_command(self, instruction: str, command: str) -> [dict, list]:
+        instruction = instruction.upper()
         if instruction == "COMMENT":
             comment = command.strip()
             if comment.startswith("#"):
                 comment = comment.replace("#", "")
             return dict(comment=comment.strip())
+        elif instruction.rstrip() == "":
+            pass
+        elif instruction.startswith("{%"):
+            pass
         elif instruction == "FROM":
             if ":" in command:
                 image_split = command.split(":")
@@ -174,7 +191,7 @@ class DockerfileParser:
         elif instruction == "MAINTAINER":
             return dict(maintainer=command)
         else:
-            raise NotImplementedError(f"Instruction is not implemented: {instruction}")
+            raise ParsingError()
 
     @staticmethod
     def _concat_multi_line_instruction(lines: list) -> str:

@@ -176,6 +176,7 @@ def test_runs(raw, executable, arguments):
     [
         ("ENTRYPOINT ['python', 'main.py', '--all']", "python", ['main.py', '--all']),
         ("ENTRYPOINT ['python']", "python", []),
+        ("ENTRYPOINT []", None, []),
         ("ENTRYPOINT python", "python", []),
     ]
 )
