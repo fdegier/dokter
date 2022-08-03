@@ -4,6 +4,6 @@ WORKDIR /app
 
 COPY dist dist
 
-RUN pip install dist/dockter-*.tar.gz && rm -rf dist
+RUN pip install dist/dokter-*.tar.gz && rm -rf dist
 
 USER nobody

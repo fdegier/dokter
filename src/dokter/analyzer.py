@@ -9,7 +9,7 @@ from .parser import DockerfileParser
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
                  verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False,
-                 write_df: bool = False, show_df: bool = False):
+                 write_df: bool = False, show_df: bool = False, silent: bool = False):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -28,6 +28,7 @@ class Analyzer:
 
         self.raw_text = True if raw_text else False
         self.verbose_explanation = verbose
+        self.silent = silent
         self.gitlab_codequality = gitlab_codequality
         self.show_dockerfile = show_df
         self.write_dockerfile = write_df
@@ -328,11 +329,12 @@ class Analyzer:
             getattr(Analyzer, f)(self)
 
         # Print the results
-        for i in sorted(set(self.results)):
-            print(i)
+        if self.silent is False:
+            for i in sorted(set(self.results)):
+                print(i)
 
         if self.gitlab_codequality:
-            report_location = f"dockter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
+            report_location = f"dokter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
             self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
             print(f"\nCode Quality report written to: {report_location}")
 
