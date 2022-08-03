@@ -1,6 +1,6 @@
 import pytest
 
-from dockter.main import dockter
+from dokter.main import dokter
 
 
 def test_dockerfiles():

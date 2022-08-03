@@ -334,7 +334,7 @@ class Analyzer:
                 print(i)
 
         if self.gitlab_codequality:
-            report_location = f"dockter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
+            report_location = f"dokter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
             self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
             print(f"\nCode Quality report written to: {report_location}")
 

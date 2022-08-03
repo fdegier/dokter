@@ -7,7 +7,7 @@ import os
 
 class ParsingError(Exception):
     """
-    Dockter is unable to parse this Dockerfile, are you sure its valid syntax?
+    Unable to parse this Dockerfile, are you sure it is valid syntax?
     """
     def __str__(self):
         return self.__doc__
