@@ -343,11 +343,16 @@ class Analyzer:
             f.write(data)
 
     def formatter(self):
+        a = [i for i in self.dfp.df_ast if i.get("formatted") is not None]
         data = ""
-        for line, instruction in enumerate(self.dfp.df_ast):
-            next_instruction = self.shellcheck.get_index(li=self.dfp.df_ast, index=line, offset=1)
+        for line, instruction in enumerate(a):
+            next_instruction = self.shellcheck.get_index(li=a, index=line, offset=1)
+            print(f"Next: {next_instruction}")
             curr_instruction = instruction["instruction"]
-            if next_instruction is not None:
+            print(f"Current: {curr_instruction}")
+            if curr_instruction == "COMMENT":
+                data += instruction['formatted']
+            elif next_instruction is not None:
                 if curr_instruction != next_instruction["instruction"]:
                     data += f"{instruction['formatted']}\n"
                 else:

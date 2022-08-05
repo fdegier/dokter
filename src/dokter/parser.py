@@ -222,6 +222,13 @@ class DockerfileParser:
 
         return command
 
+    def _get_index(self, li, index, offset, error_value=None):
+        try:
+            index = index + offset
+            return li[index]
+        except IndexError:
+            return error_value
+
     def parse_dockerfile(self) -> list[dict]:
         parsed = [{"line_number": dict(start=line_number + 1, end=line_number + 1),
                    "raw_line": i,
@@ -232,10 +239,11 @@ class DockerfileParser:
                   for line_number, i in enumerate(self.df_content)]
 
         for i, instruction in enumerate(parsed):
-            if instruction["instruction"] == "COMMENT":
-                if parsed[i + 1]["instruction"] not in ["COMMENT", None]:
-                    # Deleting inline comments
-                    del parsed[i]
+            next_instruction = self._get_index(li=parsed, index=i, offset=1, error_value={})
+            prev_instruction = self._get_index(li=parsed, index=i, offset=-1, error_value={})
+            if instruction["state"] == "comment":
+                if "continued_" in next_instruction.get("state", "") or "continued_" in prev_instruction.get("state", ""):
+                    parsed[parsed.index(instruction)]["state"] = ""
 
         multi_line_instructions = self.split_multi_lines([i for i in parsed if "_multi_line_" in i["state"]])
         single_line_instructions = sorted(

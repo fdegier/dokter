@@ -17,7 +17,7 @@ class ShellCheck:
     def get_index(li: list, index: [int, str], offset: int = 0):
         if isinstance(index, int):
             try:
-                index = (index + offset) if index > 0 else 0
+                index = (index + offset) if index >= 0 else 0
                 return li[index]
             except IndexError:
                 return None
