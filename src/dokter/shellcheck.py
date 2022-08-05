@@ -17,12 +17,14 @@ class ShellCheck:
     def get_index(li: list, index: [int, str], offset: int = 0):
         if isinstance(index, int):
             try:
-                return li[index + offset]
+                index = (index + offset) if index > 0 else 0
+                return li[index]
             except IndexError:
                 return None
         elif isinstance(index, str):
             try:
-                return li[li.index(index) + offset]
+                index = (li.index(index) + offset) if li.index(index) > 0 else 0
+                return li[index]
             except ValueError:
                 return None
 

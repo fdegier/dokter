@@ -342,6 +342,20 @@ class Analyzer:
         with open(location, "w") as f:
             f.write(data)
 
+    def formatter(self):
+        data = ""
+        for line, instruction in enumerate(self.dfp.df_ast):
+            next_instruction = self.shellcheck.get_index(li=self.dfp.df_ast, index=line, offset=1)
+            curr_instruction = instruction["instruction"]
+            if next_instruction is not None:
+                if curr_instruction != next_instruction["instruction"]:
+                    data += f"{instruction['formatted']}\n"
+                else:
+                    data += instruction['formatted']
+            else:
+                data += f"{instruction['formatted']}\n"
+        return data
+
     def run(self):
         # A bit of a hack to run all the rules
         for f in [i for i, f in inspect.getmembers(object=Analyzer) if i.startswith("dfa")]:
@@ -357,18 +371,18 @@ class Analyzer:
             self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
             print(f"\nCode Quality report written to: {report_location}")
 
-        new_dockerfile = [i["formatted"] for i in self.dfp.df_ast if i.get("formatted")]
+        new_dockerfile = self.formatter()
+
         if self.write_dockerfile:
             report_location = "Dockerfile"
             if self.dockerfile is not None:
                 report_location = self.dockerfile
-            self._write_file(location=report_location, data="\n".join(new_dockerfile))
+            self._write_file(location=report_location, data=new_dockerfile)
             print(f"\nNew Dockerfile written to: {report_location}")
 
         if self.show_dockerfile:
             print("This is the new Dockerfile:\n")
-            for i in new_dockerfile:
-                print(i)
+            print(new_dockerfile)
 
         return self.report
 
