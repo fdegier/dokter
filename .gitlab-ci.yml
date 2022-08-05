@@ -45,6 +45,7 @@ pytest:
   stage: test
   script:
     - pip install pytest pytest-cov
+    - pip install -r requirements.txt
     - cd tests
     - coverage run -m pytest
     - coverage report

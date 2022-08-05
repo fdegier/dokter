@@ -68,7 +68,11 @@ It is suggested to always use both, but at least run it where you are actually b
 
 You will need to install `Dokter` from `pip`
 ```bash
+pip install dokter 
+
+# Or from GitLab
 pip install --upgrade dokter --extra-index-url https://gitlab.com/api/v4/projects/36078023/packages/pypi/simple
+
 dokter -d path/to/Dockerfile
 ```
 If you want more information you can either run it in verbose mode or ask to explain a specific rule
@@ -86,11 +90,14 @@ You can also use docker:
 docker run -it -v $(pwd):/app registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dokter/dokter:latest dokter -d docter.Dockerfile
 ```
 
-### Dockerfile formatting
+### Dockerfile formatting and auto-correction
 
 `Dokter` is capable of creating a pretty formatted Dockerfile, as well as autocorrecting some errors found by the 
 analyzer. It can either show `-s` or write `-w` the file, in case of writing it will overwrite the given Dockerfile, so
 it's easier to review and commit changes. 
+
+Shell commands will be analyzed using [ShellCheck](http://shellcheck.net) and where possible an error will be corrected
+automatically.
 
 ```bash
 dokter -d Dockerfile -w

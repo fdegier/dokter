@@ -4,6 +4,7 @@ import os
 import time
 
 from .parser import DockerfileParser
+from .shellcheck import ShellCheck
 
 
 class Analyzer:
@@ -23,8 +24,8 @@ class Analyzer:
         self.raw_text = raw_text
         self.results = []
         self.results_code_climate = []
-        self.errors = 0
-        self.warnings = 0
+        self.shellcheck_severity_cc_map = dict(ERROR="blocker", WARNING="major", INFO="minor", STYLE="info")
+        self.report = dict(INFO=0, MINOR=0, MAJOR=0, CRITICAL=0, BLOCKER=0)
 
         self.raw_text = True if raw_text else False
         self.verbose_explanation = verbose
@@ -32,9 +33,9 @@ class Analyzer:
         self.gitlab_codequality = gitlab_codequality
         self.show_dockerfile = show_df
         self.write_dockerfile = write_df
+        self.shellcheck = ShellCheck()
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
-        cc_severity = {"ERROR": "blocker", "WARNING": "info"}
         cc_entry = {
             "location": {
                 "lines": {
@@ -43,7 +44,7 @@ class Analyzer:
                 },
                 "path": self.dockerfile
             },
-            "severity": cc_severity[severity.upper()],
+            "severity": severity,
             "type": "issue",
             "categories": categories,
             "check_name": rule.upper(),
@@ -59,13 +60,10 @@ class Analyzer:
         self.results.append(f"{self.dockerfile}:{data['line_number']['start']:<3} - {rule.upper()} "
                             f"- {severity.upper():<7} - {rule_info}")
 
-        if severity.upper() == "ERROR":
-            self.errors += 1
-        elif severity.upper() == "WARNING":
-            self.warnings += 1
+        self.report[severity.upper()] += 1
 
-    def _return_results(self):
-        return self.warnings, self.errors
+    def _return_results(self) -> dict:
+        return self.report
 
     def dfa001(self):
         """
@@ -75,7 +73,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "critical"
         categories = ["Security"]
         sensitive_files = [
             ".env", ".pem", ".properties"
@@ -100,7 +98,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "WARNING"
+        severity = "info"
         categories = ["Security"]
         if len(self.dfp.docker_ignore_files) == 0:
             data = {"line_number": {"start": 0, "end": 0}}
@@ -129,7 +127,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "major"
         categories = ["Security"]
         for i in self.dfp.copies:
             for source in i["instruction_details"]["source"]:
@@ -159,7 +157,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "critical"
         categories = ["Security"]
 
         sensitive_words = [
@@ -196,7 +194,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "major"
         categories = ["Security"]
         if len(self.dfp.users) > 0:
             last_user = self.dfp.users[-1]
@@ -227,7 +225,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "WARNING"
+        severity = "minor"
         categories = ["Style"]
         if self.dockerfile.split(".")[-1] != "Dockerfile":
             data = {"line_number": {"start": 0, "end": 0}}
@@ -242,7 +240,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "WARNING"
+        severity = "minor"
         categories = ["Bug Risk"]
         for i in self.dfp.adds:
             for source in i["instruction_details"]["source"]:
@@ -262,7 +260,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "major"
         categories = ["Performance"]
         first_run = None
         for i, instruction in enumerate(self.dfp.instructions):
@@ -289,7 +287,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "WARNING"
+        severity = "info"
         categories = ["Performance"]
         if "HEALTHCHECK" not in self.dfp.instructions:
             data = {"line_number": {"start": 0, "end": 0}}
@@ -302,7 +300,7 @@ class Analyzer:
         :return:
         """
         rule = inspect.stack()[0][3]
-        severity = "ERROR"
+        severity = "major"
         categories = ["Style"]
 
         instructions_past_entrypoint = []
@@ -318,10 +316,48 @@ class Analyzer:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
                                 categories=categories)
 
+    def dfa000_shellcheck(self):
+        """
+        Violation of Shellcheck rule
+        :return:
+        """
+        categories = ["Style"]
+        for i in self.dfp.runs:
+            sc_results = self.shellcheck.check(
+                shell_command=f'{i["instruction_details"]["executable"]} {i["instruction_details"]["arguments"]}'
+            )
+            for result in sc_results:
+                rule = result["sc_rule"]
+                if result["fixed_line"] is not None:
+                    corrected = i["_raw"].replace(result["wrong_line"], result["fixed_line"])
+                    i["formatted"] = self.dfp.format_and_correct_sh(instruction=i["instruction"], raw_command=corrected,
+                                                                    raw_line=i["_raw"])
+
+                severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa000_shellcheck),
+                                categories=categories)
+
     @staticmethod
     def _write_file(location, data):
         with open(location, "w") as f:
             f.write(data)
+
+    def formatter(self):
+        a = [i for i in self.dfp.df_ast if i.get("formatted") is not None]
+        data = ""
+        for line, instruction in enumerate(a):
+            next_instruction = self.shellcheck.get_index(li=a, index=line, offset=1)
+            curr_instruction = instruction["instruction"]
+            if curr_instruction == "COMMENT":
+                data += instruction['formatted']
+            elif next_instruction is not None:
+                if curr_instruction != next_instruction["instruction"]:
+                    data += f"{instruction['formatted']}\n"
+                else:
+                    data += instruction['formatted']
+            else:
+                data += f"{instruction['formatted']}\n"
+        return data
 
     def run(self):
         # A bit of a hack to run all the rules
@@ -338,20 +374,20 @@ class Analyzer:
             self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
             print(f"\nCode Quality report written to: {report_location}")
 
-        new_dockerfile = [i["formatted"] for i in self.dfp.df_ast if i.get("formatted")]
+        new_dockerfile = self.formatter()
+
         if self.write_dockerfile:
             report_location = "Dockerfile"
             if self.dockerfile is not None:
                 report_location = self.dockerfile
-            self._write_file(location=report_location, data="\n".join(new_dockerfile))
+            self._write_file(location=report_location, data=new_dockerfile)
             print(f"\nNew Dockerfile written to: {report_location}")
 
         if self.show_dockerfile:
             print("This is the new Dockerfile:\n")
-            for i in new_dockerfile:
-                print(i)
+            print(new_dockerfile)
 
-        return self.warnings, self.errors
+        return self.report
 
     @staticmethod
     def explain(rule):
