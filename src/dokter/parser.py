@@ -7,7 +7,7 @@ import os
 
 class ParsingError(Exception):
     """
-    Dockter is unable to parse this Dockerfile, are you sure its valid syntax?
+    Unable to parse this Dockerfile, are you sure it is valid syntax?
     """
     def __str__(self):
         return self.__doc__
@@ -198,8 +198,6 @@ class DockerfileParser:
         single_line = ""
         for i in lines:
             single_line += i["raw_command"]
-        # TODO: Not sure if this is needed?
-        # single_line.replace("\\", "")
 
         lines[0]["state"] = "multi_line_command"
         lines[0]["line_number"]["end"] = max([i["line_number"]["start"] for i in lines])
@@ -215,6 +213,22 @@ class DockerfileParser:
                 start_index = i+1
         return result
 
+    @staticmethod
+    def format_and_correct_sh(instruction, raw_command: str, raw_line):
+        if instruction in ["RUN", "LABEL", "ENV"]:
+            command = "{} {}\n".format(instruction, raw_command.replace('\\', '\\\n\t'))
+        else:
+            command = f"{raw_line}\n"
+
+        return command
+
+    def _get_index(self, li, index, offset, error_value=None):
+        try:
+            index = index + offset
+            return li[index]
+        except IndexError:
+            return error_value
+
     def parse_dockerfile(self) -> list[dict]:
         parsed = [{"line_number": dict(start=line_number + 1, end=line_number + 1),
                    "raw_line": i,
@@ -223,6 +237,13 @@ class DockerfileParser:
                    "raw_command": self._get_raw_command(line=i)
                    }
                   for line_number, i in enumerate(self.df_content)]
+
+        for i, instruction in enumerate(parsed):
+            next_instruction = self._get_index(li=parsed, index=i, offset=1, error_value={})
+            prev_instruction = self._get_index(li=parsed, index=i, offset=-1, error_value={})
+            if instruction["state"] == "comment":
+                if "continued_" in next_instruction.get("state", "") or "continued_" in prev_instruction.get("state", ""):
+                    parsed[parsed.index(instruction)]["state"] = ""
 
         multi_line_instructions = self.split_multi_lines([i for i in parsed if "_multi_line_" in i["state"]])
         single_line_instructions = sorted(
@@ -234,9 +255,9 @@ class DockerfileParser:
                          instruction=i["instruction"],
                          instruction_details=self._parse_command(instruction=i["instruction"],
                                                                  command=i["raw_command"]),
-                         _raw=i["raw_line"],
-                         formatted="{} {}\n".format(i['instruction'], i['raw_command'].replace('\\', '\\\n\t')) if
-                         i["instruction"] == "RUN" else f'{i["raw_line"]}\n'
+                         _raw=i["raw_command"],
+                         formatted=self.format_and_correct_sh(instruction=i['instruction'],
+                                                              raw_command=i['raw_command'], raw_line=i["raw_line"])
                          )
                     for i in single_line_instructions]
         return enriched

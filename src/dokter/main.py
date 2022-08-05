@@ -3,7 +3,7 @@ import argparse
 from .analyzer import Analyzer
 
 
-def dockter():
+def dokter():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dockerfile", dest="dockerfile", required=False, help="Path to Dockerfile location")
     parser.add_argument("-e", "--explain", dest="explain_rule", required=False, help="Explain what a rule entails")
@@ -18,10 +18,11 @@ def dockter():
     args = parser.parse_args()
     a = Analyzer(**vars(args))
     if args.explain_rule is None:
-        warnings, errors = a.run()
-        if errors > 0:
+        result = a.run()
+        del result["INFO"]
+        if sum(result.values()) > 0:
             exit(1)
 
 
 if __name__ == "__main__":
-    dockter()
+    dokter()
