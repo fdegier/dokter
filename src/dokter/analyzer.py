@@ -347,9 +347,7 @@ class Analyzer:
         data = ""
         for line, instruction in enumerate(a):
             next_instruction = self.shellcheck.get_index(li=a, index=line, offset=1)
-            print(f"Next: {next_instruction}")
             curr_instruction = instruction["instruction"]
-            print(f"Current: {curr_instruction}")
             if curr_instruction == "COMMENT":
                 data += instruction['formatted']
             elif next_instruction is not None:
