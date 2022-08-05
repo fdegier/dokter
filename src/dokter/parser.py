@@ -231,6 +231,12 @@ class DockerfileParser:
                    }
                   for line_number, i in enumerate(self.df_content)]
 
+        for i, instruction in enumerate(parsed):
+            if instruction["instruction"] == "COMMENT":
+                if parsed[i + 1]["instruction"] not in ["COMMENT", None]:
+                    # Deleting inline comments
+                    del parsed[i]
+
         multi_line_instructions = self.split_multi_lines([i for i in parsed if "_multi_line_" in i["state"]])
         single_line_instructions = sorted(
             [i for i in parsed if i["state"] in ["new_command", "comment"]] + multi_line_instructions,
