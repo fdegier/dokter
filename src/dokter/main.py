@@ -18,8 +18,9 @@ def dokter():
     args = parser.parse_args()
     a = Analyzer(**vars(args))
     if args.explain_rule is None:
-        warnings, errors = a.run()
-        if errors > 0:
+        result = a.run()
+        del result["INFO"]
+        if sum(result.values()) > 0:
             exit(1)
 
 

@@ -198,8 +198,6 @@ class DockerfileParser:
         single_line = ""
         for i in lines:
             single_line += i["raw_command"]
-        # TODO: Not sure if this is needed?
-        # single_line.replace("\\", "")
 
         lines[0]["state"] = "multi_line_command"
         lines[0]["line_number"]["end"] = max([i["line_number"]["start"] for i in lines])
@@ -214,6 +212,15 @@ class DockerfileParser:
                 result.append(self._concat_multi_line_instruction(lines=lines[start_index:i + 1]))
                 start_index = i+1
         return result
+
+    @staticmethod
+    def format_and_correct_sh(instruction, raw_command: str, raw_line):
+        if instruction in ["RUN", "LABEL", "ENV"]:
+            command = "{} {}\n".format(instruction, raw_command.replace('\\', '\\\n\t'))
+        else:
+            command = f"{raw_line}\n"
+
+        return command
 
     def parse_dockerfile(self) -> list[dict]:
         parsed = [{"line_number": dict(start=line_number + 1, end=line_number + 1),
@@ -234,9 +241,9 @@ class DockerfileParser:
                          instruction=i["instruction"],
                          instruction_details=self._parse_command(instruction=i["instruction"],
                                                                  command=i["raw_command"]),
-                         _raw=i["raw_line"],
-                         formatted="{} {}\n".format(i['instruction'], i['raw_command'].replace('\\', '\\\n\t')) if
-                         i["instruction"] == "RUN" else f'{i["raw_line"]}\n'
+                         _raw=i["raw_command"],
+                         formatted=self.format_and_correct_sh(instruction=i['instruction'],
+                                                              raw_command=i['raw_command'], raw_line=i["raw_line"])
                          )
                     for i in single_line_instructions]
         return enriched
