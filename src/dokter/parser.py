@@ -132,11 +132,16 @@ class DockerfileParser:
         elif instruction.startswith("{%"):
             pass
         elif instruction == "FROM":
-            if ":" in command:
-                image_split = command.split(":")
-                return dict(image=image_split[0], version=image_split[1])
-            else:
-                return dict(image=command)
+            image = dict(image=command)
+            if " as " in command.lower():
+                split = image["image"].lower().split(" as ")
+                image["image"] = split[0]
+                image["alias"] = split[1]
+            if ":" in image["image"]:
+                split = image["image"].split(":")
+                image["image"] = split[0]
+                image["version"] = split[1]
+            return image
         elif instruction in ["COPY", "ADD"]:
             copy_split = command.split(" ")
             copy_dict = {}

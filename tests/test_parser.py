@@ -4,19 +4,22 @@ from src.dokter.parser import DockerfileParser
 
 
 @pytest.mark.parametrize(
-    "raw,image,version",
+    "raw,image,alias,version",
     [
-        ("FROM python3.8", "python3.8", None),
-        ("FROM python:3.8.9", "python", "3.8.9"),
-        ("FROM ruby:latest", "ruby", "latest")
+        ("FROM python3.8", "python3.8", None, None),
+        ("FROM python3.8 AS build", "python3.8", "build", None),
+        ("FROM python:3.8.9", "python", None, "3.8.9"),
+        ("FROM ruby:latest", "ruby", None, "latest"),
+        ("FROM ruby:latest as build", "ruby", "build", "latest"),
     ]
 )
-def test_froms(raw, image, version):
+def test_froms(raw, image, alias, version):
     dfp = DockerfileParser(raw_text=raw)
     assert len(dfp.froms) == 1
     from_details = dfp.froms[0]["instruction_details"]
     assert from_details["image"] == image
     assert from_details.get("version") == version
+    assert from_details.get("alias") == alias
 
 
 @pytest.mark.parametrize(
