@@ -55,6 +55,7 @@ class ShellCheck:
                     "line_number": y[0].split(" line ", 1)[1],
                     "severity": re.search(pattern=self.sc_severity_pattern, string=y[2]).group(),
                     "sc_rule": re.search(pattern=self.sc_rule_pattern, string=y[2]).group(),
+                    "sc_rule_desc": y[2].split(": ", 1)[1],
                     "wrong_line": y[1],
                     "fixed_line": self.get_index(li=y, index="Did you mean: ", offset=1)
                 }

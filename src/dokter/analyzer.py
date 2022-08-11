@@ -334,7 +334,7 @@ class Analyzer:
                                                                     raw_line=i["_raw"])
 
                 severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
-                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa000_shellcheck),
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
                                 categories=categories)
 
     @staticmethod
