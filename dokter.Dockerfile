@@ -1,7 +1,7 @@
 FROM python:3.10.5-alpine
 
 WORKDIR /app
-RUN apk add bash openssh curl
+RUN apk add bash openssh curl git
 
 COPY dist dist
 
