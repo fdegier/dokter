@@ -6,7 +6,6 @@ DOKTER_BRANCH="dokter/${CI_COMMIT_REF_NAME}"
 
 # Setup git
 DOCKERFILE=${DOKTER_DOCKERFILE}
-git add "${DOCKERFILE}"
 
 if [[ $(git status --untracked-files=no -s | grep -c "${DOCKERFILE}" ) -eq 0 ]]
 then
@@ -14,6 +13,7 @@ then
   exit 0
 fi
 
+git add "${DOCKERFILE}"
 git config --global user.email "dokter@gitlab.com"
 git config --global user.name "Dokter"
 git checkout -b "${DOKTER_BRANCH}"
