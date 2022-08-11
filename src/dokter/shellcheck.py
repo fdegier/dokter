@@ -8,6 +8,18 @@ class ShellCheck:
         self.tmp_file = "tmp.sh"
         self.sc_rule_pattern = "SC[0-9]{4}"
         self.sc_severity_pattern = "(info)|(error)|(warning)|(style)"
+        self.shellcheck = self._verify_shellcheck()
+
+    @staticmethod
+    def _verify_shellcheck():
+        cmd = ["shellcheck", "-V"]
+        try:
+            subprocess.run(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            return True
+        except FileNotFoundError:
+            print(f"WARNING: ShellCheck is not installed, unable to parse shell commands. "
+                  f"Run `pip install shellcheck-py`")
+            return False
 
     def _write_to_file(self, command):
         with open(self.tmp_file, 'w') as f:
@@ -30,6 +42,8 @@ class ShellCheck:
 
     def check(self, shell_command: str, shell: str = "sh"):
         output = []
+        if self.shellcheck is False:
+            return output
         self._write_to_file(command=shell_command)
 
         cmd = ["shellcheck", "-s", shell, self.tmp_file]
