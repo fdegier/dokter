@@ -17,8 +17,8 @@ class ShellCheck:
             subprocess.run(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
             return True
         except FileNotFoundError:
-            print(f"WARNING: ShellCheck is not installed, unable to parse shell commands. "
-                  f"Run `pip install shellcheck-py`")
+            print("WARNING: ShellCheck is not installed, unable to parse shell commands. "
+                  "Run `pip install shellcheck-py`")
             return False
 
     def _write_to_file(self, command):
