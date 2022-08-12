@@ -65,11 +65,36 @@ class Analyzer:
     def _return_results(self) -> dict:
         return self.report
 
+    def dfa000_shellcheck(self):
+        """
+        Violation of Shellcheck rule
+
+        Autocorrect: True
+        :return:
+        """
+        categories = ["Style"]
+        for i in self.dfp.runs:
+            sc_results = self.shellcheck.check(
+                shell_command=f'{i["instruction_details"]["executable"]} {i["instruction_details"]["arguments"]}'
+            )
+            for result in sc_results:
+                rule = result["sc_rule"]
+                if result["fixed_line"] is not None:
+                    corrected = i["_raw"].replace(result["wrong_line"], result["fixed_line"])
+                    i["formatted"] = self.dfp.format_and_correct_sh(instruction=i["instruction"], raw_command=corrected,
+                                                                    raw_line=i["_raw"])
+
+                severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
+                                categories=categories)
+
     def dfa001(self):
         """
         Verify that no credentials are leaking by copying in sensitive files.
 
         Examples include: copying over a .env file, SSH private keys, settings files etc.
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -95,6 +120,8 @@ class Analyzer:
         By using a .dockerignore files, the build will generally be faster because it has to transfer less data to the
         daemon, it also helps prevent copying sensitive files. For more information see:
         https://docs.docker.com/engine/reference/builder/#dockerignore-file
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -124,6 +151,8 @@ class Analyzer:
         ++++++++
         COPY . /app
         ++++++++
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -154,6 +183,8 @@ class Analyzer:
         ARG TOKEN
         RUN docker login -u user -p $TOKEN
         ++++++++
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -181,7 +212,7 @@ class Analyzer:
 
         ++++++++
         FROM python:3.10.0
-        RUN adduser -D appuser && chown -R appuser /app
+        RUN useradd -D appuser && chown -R appuser /app
         USER appuser
         CMD ["python", "main.py"]
         ++++++++
@@ -191,6 +222,8 @@ class Analyzer:
         FROM python:3.10.0
         CMD ["python", "main.py"]
         ++++++++
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -201,6 +234,10 @@ class Analyzer:
             if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
                 self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005),
                                 categories=categories)
+                workdir = "/app" if len(self.dfp.workdirs) == 0 else \
+                    self.dfp.workdirs[-1]["instruction_details"]["workdir"]
+                last_user["formatted"] = f"WORKDIR {workdir}\nRUN useradd -M appuser &&" \
+                                         f" chown -R appuser {workdir}\nUSER appuser\n"
 
     def dfa006(self):
         """
@@ -222,6 +259,8 @@ class Analyzer:
         - DockerFile
         - Dockerfile1
         - Dockerfile-api
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -237,6 +276,8 @@ class Analyzer:
         Only use ADD for downloading from a URL or automatically unzipping local files, use COPY for other local files.
 
         See also: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#add-or-copy
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -257,6 +298,8 @@ class Analyzer:
     def dfa008(self):
         """
         Chain multiple RUN instructions together to reduce the number of layers and size of the image.
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -284,6 +327,8 @@ class Analyzer:
     def dfa010(self):
         """
         Include a healthcheck for long-running or persistent containers.
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -316,26 +361,31 @@ class Analyzer:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
                                 categories=categories)
 
-    def dfa000_shellcheck(self):
+    def dfa012(self):
         """
-        Violation of Shellcheck rule
+        MAINTAINER is deprecated, use LABEL instead.
+
+        Incorrect:
+        ++++++++
+        MAINTAINER dev@someproject.org
+        ++++++++
+
+        Correct:
+        ++++++++
+        LABEL maintainer="dev@someproject.org"
+        ++++++++
+
+        Autocorrect: True
         :return:
         """
+        rule = inspect.stack()[0][3]
+        severity = "major"
         categories = ["Style"]
-        for i in self.dfp.runs:
-            sc_results = self.shellcheck.check(
-                shell_command=f'{i["instruction_details"]["executable"]} {i["instruction_details"]["arguments"]}'
-            )
-            for result in sc_results:
-                rule = result["sc_rule"]
-                if result["fixed_line"] is not None:
-                    corrected = i["_raw"].replace(result["wrong_line"], result["fixed_line"])
-                    i["formatted"] = self.dfp.format_and_correct_sh(instruction=i["instruction"], raw_command=corrected,
-                                                                    raw_line=i["_raw"])
-
-                severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
-                self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
+        if len(self.dfp.maintainers) > 0:
+            for i in self.dfp.maintainers:
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa012),
                                 categories=categories)
+                i["formatted"] = i["formatted"].replace("MAINTAINER ", "LABEL maintainer=")
 
     @staticmethod
     def _write_file(location, data):

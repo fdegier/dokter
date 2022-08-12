@@ -346,6 +346,10 @@ class DockerfileParser:
     def onbuilds(self) -> list[dict]:
         return self._get_instructions(instruction="ONBUILD")
 
+    @property
+    def maintainers(self) -> list[dict]:
+        return self._get_instructions(instruction="MAINTAINER")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
