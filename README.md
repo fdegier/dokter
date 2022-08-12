@@ -23,6 +23,8 @@ vulnerabilities, which at the bare minimum saves CI/CD minutes.
 Separate processes like container registry scanning will also run, but they may run only after an image has been pushed,
 potentially already exposing a vulnerable image to the public.
 
+![](docs/img/ci-cd-cycle.jpg)
+
 
 ## What makes Dokter special?
 
