@@ -310,3 +310,14 @@ def test_onbuilds(raw, sub_instruction, executable, arguments):
 def test_dockerfiles(dockerfile, expected):
     dfp = DockerfileParser(dockerfile=dockerfile)
     assert dfp.df_ast == expected
+
+
+@pytest.mark.parametrize(
+    "raw,maintainer",
+    [
+        ("MAINTAINER Fred", "Fred")
+    ]
+)
+def test_maintainers(raw, maintainer):
+    dfp = DockerfileParser(raw_text=raw)
+    assert dfp.maintainers[0]["instruction_details"].get("maintainer") == maintainer

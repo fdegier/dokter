@@ -65,6 +65,27 @@ class Analyzer:
     def _return_results(self) -> dict:
         return self.report
 
+    def dfa000_shellcheck(self):
+        """
+        Violation of Shellcheck rule
+        :return:
+        """
+        categories = ["Style"]
+        for i in self.dfp.runs:
+            sc_results = self.shellcheck.check(
+                shell_command=f'{i["instruction_details"]["executable"]} {i["instruction_details"]["arguments"]}'
+            )
+            for result in sc_results:
+                rule = result["sc_rule"]
+                if result["fixed_line"] is not None:
+                    corrected = i["_raw"].replace(result["wrong_line"], result["fixed_line"])
+                    i["formatted"] = self.dfp.format_and_correct_sh(instruction=i["instruction"], raw_command=corrected,
+                                                                    raw_line=i["_raw"])
+
+                severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
+                                categories=categories)
+
     def dfa001(self):
         """
         Verify that no credentials are leaking by copying in sensitive files.
@@ -316,25 +337,28 @@ class Analyzer:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
                                 categories=categories)
 
-    def dfa000_shellcheck(self):
+    def dfa012(self):
         """
-        Violation of Shellcheck rule
+        MAINTAINER is deprecated, use LABEL instead.
+
+        Incorrect:
+        ```
+        MAINTAINER dev@someproject.org
+        ```
+
+        Correct:
+        ```
+        LABEL maintainer="dev@someproject.org"
+        ```
         :return:
         """
+        rule = inspect.stack()[0][3]
+        severity = "major"
         categories = ["Style"]
-        for i in self.dfp.runs:
-            sc_results = self.shellcheck.check(
-                shell_command=f'{i["instruction_details"]["executable"]} {i["instruction_details"]["arguments"]}'
-            )
-            for result in sc_results:
-                rule = result["sc_rule"]
-                if result["fixed_line"] is not None:
-                    corrected = i["_raw"].replace(result["wrong_line"], result["fixed_line"])
-                    i["formatted"] = self.dfp.format_and_correct_sh(instruction=i["instruction"], raw_command=corrected,
-                                                                    raw_line=i["_raw"])
-
-                severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
-                self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
+        if len(self.dfp.maintainers) > 0:
+            for i in self.dfp.maintainers:
+                i["formatted"] = i["formatted"].replace("MAINTAINER ", "LABEL maintainer=")
+                self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa012),
                                 categories=categories)
 
     @staticmethod
