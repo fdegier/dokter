@@ -10,21 +10,20 @@ LABEL maintainer="Fred"
 
 LABEL foo="bar" maintainer="I, the author"
 
-COPY credentials.txt config.py
 COPY . b
 
-COPY ../requirements.txt src/main.py /app/
+COPY ../requirements.txt src/dokter/main.py /app/
 
 ENV foo=bar
 ENV NO_INT 1
 
 # This is a comment
 RUN apt-get \
-    install curl && \
+    install curl \
        git
 
-RUN apt-get install --no-install-recommends curl && \
-   git && \
+RUN apt-get install --no-install-recommends curl \
+   git \
     wget
 
 SHELL ["powershell", "-command"]
@@ -32,9 +31,8 @@ SHELL ["powershell", "-command"]
 EXPOSE 8000
 EXPOSE 9000/tcp
 
-ADD file_a file_a
 
-USER me
+USER root
 
 WORKDIR /app
 

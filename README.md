@@ -26,7 +26,7 @@ potentially already exposing a vulnerable image to the public.
 
 ## What makes Dokter special?
 
-Good question, `Dokter` is the byproduct of a much bigger product, 
+Good question, `Dokter` is the byproduct of a much bigger effort, 
 [GitLab AI Assist](https://about.gitlab.com/handbook/engineering/incubation/ai-assist/), as a first starting point, 
 Dockerfiles were chosen. A parser was developed to fully parse Dockerfiles in a format that is designed for machine 
 learning. In order to train ML models, there is a need to create a large, rich dataset and in order to do that a good 
@@ -143,6 +143,38 @@ dokter:
         - "dokter-$CI_COMMIT_SHA.json"
     paths:
       - "dokter-$CI_COMMIT_SHA.json"
+```
+
+### Automatic merge requests with resolutions
+
+Below is an example where `Dokter` is used to analyze a Dockerfile and autocorrect it, the output is then committed to a 
+new branch with the following name structure `dokter/<source_branch_name>` and a merge request will be created and
+assigned to the user that started the pipeline. 
+
+```yaml
+dokter:
+  image: registry.gitlab.com/gitlab-org/incubation-engineering/ai-assist/dokter/dokter:latest
+  stage: lint
+  variables:
+    DOKTER_DOCKERFILE: Dockerfile
+  before_script:
+    - mkdir -p ~/.ssh && echo "$DOKTER_SSH_KEY" > ~/.ssh/id_rsa && chmod -R 700 ~/.ssh
+  script:
+    - dokter -d $DOKTER_DOCKERFILE --gitlab-codequality -w
+  after_script:
+    - bash /create-mr.sh
+  artifacts:
+    name: "$CI_JOB_NAME artifacts from $CI_PROJECT_NAME on $CI_COMMIT_REF_SLUG"
+    expire_in: 1 day
+    when: always
+    reports:
+      codequality:
+        - "dokter-$CI_COMMIT_SHA.json"
+    paths:
+      - "dokter-$CI_COMMIT_SHA.json"
+  rules:
+    # Very important to prevent a loop :-)
+    - if: $CI_COMMIT_REF_NAME !~ /^dokter/ && $CI_PIPELINE_SOURCE == "merge_request_event"
 ```
 
 ### Gotcha's

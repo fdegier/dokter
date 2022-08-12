@@ -10,8 +10,23 @@ from src.dokter.analyzer import Analyzer
     ]
 )
 def test_explain(rule, out):
-    dfp = Analyzer(raw_text="")
-    assert dfp.explain(rule=rule) == out
+    dfa = Analyzer(raw_text="")
+    assert dfa.explain(rule=rule) == out
+
+
+@pytest.mark.parametrize(
+    "raw,severity,count",
+    [
+        ("RUN echo $USER", "minor", 1),
+        ("RUN [[ n != 0 ]]", "major", 1)
+    ]
+)
+def test_dfa000(raw, severity, count):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa000_shellcheck()
+    result = dfa._return_results()
+    assert result.get(severity.upper(), 0) == count
+    assert sum(result.values()) == count
 
 
 @pytest.mark.parametrize(
@@ -27,9 +42,9 @@ def test_explain(rule, out):
     ]
 )
 def test_dfa001(raw, severity, count):
-    dfp = Analyzer(raw_text=raw)
-    dfp.dfa001()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa001()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
 
 
@@ -41,9 +56,9 @@ def test_dfa001(raw, severity, count):
     ]
 )
 def test_dfa002(dockerignore, severity, count):
-    dfp = Analyzer(raw_text="FROM python:3.10.0", dockerignore=dockerignore)
-    dfp.dfa002()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text="FROM python:3.10.0", dockerignore=dockerignore)
+    dfa.dfa002()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
@@ -59,9 +74,9 @@ def test_dfa002(dockerignore, severity, count):
     ]
 )
 def test_dfa003(raw, severity, count):
-    dfp = Analyzer(raw_text=raw)
-    dfp.dfa003()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa003()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
@@ -77,28 +92,29 @@ def test_dfa003(raw, severity, count):
     ]
 )
 def test_dfa004(arguments, severity, count):
-    dfp = Analyzer(raw_text=arguments)
-    dfp.dfa004()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text=arguments)
+    dfa.dfa004()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
 
 @pytest.mark.parametrize(
-    "users,severity,count",
+    "users,severity,count,formatted",
     [
-        ("USER ADMIN", "major", 0),
-        ("USER root", "major", 1),
-        ("USER root:1000", "major", 1),
-        ("USER root \nUSER nobody", "major", 0)
+        ("USER ADMIN", "major", 0, "USER ADMIN\n"),
+        ("USER root", "major", 1, "WORKDIR /app\nRUN useradd -M appuser && chown -R appuser /app\nUSER appuser\n"),
+        ("USER root:1000", "major", 1, "WORKDIR /app\nRUN useradd -M appuser && chown -R appuser /app\nUSER appuser\n"),
+        ("USER root \nUSER nobody", "major", 0, "USER nobody\n")
     ]
 )
-def test_dfa005(users, severity, count):
-    dfp = Analyzer(raw_text=users)
-    dfp.dfa005()
-    result = dfp._return_results()
+def test_dfa005(users, severity, count, formatted):
+    dfa = Analyzer(raw_text=users)
+    dfa.dfa005()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
+    assert dfa.dfp.users[-1]["formatted"] == formatted
 
 
 @pytest.mark.parametrize(
@@ -112,10 +128,10 @@ def test_dfa005(users, severity, count):
     ]
 )
 def test_dfa006(dockerfile, severity, count):
-    dfp = Analyzer(raw_text="FROM scratch")
-    dfp.dockerfile = dockerfile
-    dfp.dfa006()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text="FROM scratch")
+    dfa.dockerfile = dockerfile
+    dfa.dfa006()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
@@ -133,24 +149,24 @@ def test_dfa006(dockerfile, severity, count):
     ]
 )
 def test_dfa007(raw, severity, count):
-    dfp = Analyzer(raw_text=raw)
-    dfp.dfa007()
-    result = dfp._return_results()
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa007()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
 
 @pytest.mark.parametrize(
-    "users,severity,count",
+    "raw,severity,count",
     [
         ("RUN apt-get update \nRUN apt-get upgrade", "major", 2),
         ("USER apt-get update && apt-get upgrade", "major", 0),
     ]
 )
-def test_dfa008(users, severity, count):
-    dfp = Analyzer(raw_text=users)
-    dfp.dfa008()
-    result = dfp._return_results()
+def test_dfa008(raw, severity, count):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa008()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
@@ -160,16 +176,16 @@ def test_dfa009():
 
 
 @pytest.mark.parametrize(
-    "users,severity,count",
+    "raw,severity,count",
     [
         ('HEALTHCHECK CMD cat /tmp.txt \nCMD ["python", "main.py", "--only-data"]', "info", 0),
         ('CMD ["python", "main.py", "--only-data"]', "info", 1),
     ]
 )
-def test_dfa010(users, severity, count):
-    dfp = Analyzer(raw_text=users)
-    dfp.dfa010()
-    result = dfp._return_results()
+def test_dfa010(raw, severity, count):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa010()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
@@ -177,13 +193,31 @@ def test_dfa010(users, severity, count):
 @pytest.mark.parametrize(
     "raw,severity,count",
     [
-        ("RUN echo $USER", "minor", 1),
-        ("RUN [[ n != 0 ]]", "major", 1)
+        ('CMD ["python", "main.py", "--only-data"]\nRUN apt-get update', "major", 1),
+        ('CMD ["python", "main.py", "--only-data"]', "major", 0),
     ]
 )
-def test_dfa_shellcheck(raw, severity, count):
-    dfp = Analyzer(raw_text=raw)
-    dfp.dfa000_shellcheck()
-    result = dfp._return_results()
+def test_dfa011(raw, severity, count):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa011()
+    result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
+
+
+@pytest.mark.parametrize(
+    "maintainer,severity,count,formatted",
+    [
+        ("MAINTAINER Fred", "major", 1, "LABEL maintainer=Fred\n"),
+        ("MAINTAINER 'Fred'", "major", 1, "LABEL maintainer='Fred'\n"),
+    ]
+)
+def test_dfa012(maintainer,  severity, count, formatted):
+    dfa = Analyzer(raw_text=maintainer)
+    dfa.dfa012()
+    result = dfa._return_results()
+    assert dfa.dfp.maintainers[0]["formatted"] == formatted
+    assert result.get(severity.upper(), 0) == count
+    assert sum(result.values()) == count
+
+
