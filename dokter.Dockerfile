@@ -7,6 +7,4 @@ COPY dist dist
 
 RUN pip install dist/dokter-*.tar.gz && rm -rf dist
 
-COPY create-mr.sh .
-
-USER nobody
+COPY create-mr.sh /

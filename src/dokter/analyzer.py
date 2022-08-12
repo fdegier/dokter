@@ -68,6 +68,8 @@ class Analyzer:
     def dfa000_shellcheck(self):
         """
         Violation of Shellcheck rule
+
+        Autocorrect: True
         :return:
         """
         categories = ["Style"]
@@ -91,6 +93,8 @@ class Analyzer:
         Verify that no credentials are leaking by copying in sensitive files.
 
         Examples include: copying over a .env file, SSH private keys, settings files etc.
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -116,6 +120,8 @@ class Analyzer:
         By using a .dockerignore files, the build will generally be faster because it has to transfer less data to the
         daemon, it also helps prevent copying sensitive files. For more information see:
         https://docs.docker.com/engine/reference/builder/#dockerignore-file
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -145,6 +151,8 @@ class Analyzer:
         ++++++++
         COPY . /app
         ++++++++
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -175,6 +183,8 @@ class Analyzer:
         ARG TOKEN
         RUN docker login -u user -p $TOKEN
         ++++++++
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -202,7 +212,7 @@ class Analyzer:
 
         ++++++++
         FROM python:3.10.0
-        RUN adduser -D appuser && chown -R appuser /app
+        RUN useradd -D appuser && chown -R appuser /app
         USER appuser
         CMD ["python", "main.py"]
         ++++++++
@@ -212,6 +222,8 @@ class Analyzer:
         FROM python:3.10.0
         CMD ["python", "main.py"]
         ++++++++
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -222,6 +234,10 @@ class Analyzer:
             if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
                 self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005),
                                 categories=categories)
+                workdir = "/app" if len(self.dfp.workdirs) == 0 else \
+                    self.dfp.workdirs[-1]["instruction_details"]["workdir"]
+                last_user["formatted"] = f"WORKDIR {workdir}\nRUN useradd -M appuser &&" \
+                                         f" chown -R appuser {workdir}\nUSER appuser\n"
 
     def dfa006(self):
         """
@@ -243,6 +259,8 @@ class Analyzer:
         - DockerFile
         - Dockerfile1
         - Dockerfile-api
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -258,6 +276,8 @@ class Analyzer:
         Only use ADD for downloading from a URL or automatically unzipping local files, use COPY for other local files.
 
         See also: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#add-or-copy
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -278,6 +298,8 @@ class Analyzer:
     def dfa008(self):
         """
         Chain multiple RUN instructions together to reduce the number of layers and size of the image.
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -305,6 +327,8 @@ class Analyzer:
     def dfa010(self):
         """
         Include a healthcheck for long-running or persistent containers.
+
+        Autocorrect: False
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -342,14 +366,16 @@ class Analyzer:
         MAINTAINER is deprecated, use LABEL instead.
 
         Incorrect:
-        ```
+        ++++++++
         MAINTAINER dev@someproject.org
-        ```
+        ++++++++
 
         Correct:
-        ```
+        ++++++++
         LABEL maintainer="dev@someproject.org"
-        ```
+        ++++++++
+
+        Autocorrect: True
         :return:
         """
         rule = inspect.stack()[0][3]
@@ -357,9 +383,9 @@ class Analyzer:
         categories = ["Style"]
         if len(self.dfp.maintainers) > 0:
             for i in self.dfp.maintainers:
-                i["formatted"] = i["formatted"].replace("MAINTAINER ", "LABEL maintainer=")
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa012),
                                 categories=categories)
+                i["formatted"] = i["formatted"].replace("MAINTAINER ", "LABEL maintainer=")
 
     @staticmethod
     def _write_file(location, data):

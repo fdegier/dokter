@@ -100,20 +100,21 @@ def test_dfa004(arguments, severity, count):
 
 
 @pytest.mark.parametrize(
-    "users,severity,count",
+    "users,severity,count,formatted",
     [
-        ("USER ADMIN", "major", 0),
-        ("USER root", "major", 1),
-        ("USER root:1000", "major", 1),
-        ("USER root \nUSER nobody", "major", 0)
+        ("USER ADMIN", "major", 0, "USER ADMIN\n"),
+        ("USER root", "major", 1, "WORKDIR /app\nRUN useradd -M appuser && chown -R appuser /app\nUSER appuser\n"),
+        ("USER root:1000", "major", 1, "WORKDIR /app\nRUN useradd -M appuser && chown -R appuser /app\nUSER appuser\n"),
+        ("USER root \nUSER nobody", "major", 0, "USER nobody\n")
     ]
 )
-def test_dfa005(users, severity, count):
+def test_dfa005(users, severity, count, formatted):
     dfa = Analyzer(raw_text=users)
     dfa.dfa005()
     result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
+    assert dfa.dfp.users[-1]["formatted"] == formatted
 
 
 @pytest.mark.parametrize(
@@ -184,6 +185,21 @@ def test_dfa009():
 def test_dfa010(raw, severity, count):
     dfa = Analyzer(raw_text=raw)
     dfa.dfa010()
+    result = dfa._return_results()
+    assert result.get(severity.upper(), 0) == count
+    assert sum(result.values()) == count
+
+
+@pytest.mark.parametrize(
+    "raw,severity,count",
+    [
+        ('CMD ["python", "main.py", "--only-data"]\nRUN apt-get update', "major", 1),
+        ('CMD ["python", "main.py", "--only-data"]', "major", 0),
+    ]
+)
+def test_dfa011(raw, severity, count):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dfa011()
     result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
