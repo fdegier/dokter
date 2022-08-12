@@ -26,6 +26,11 @@ potentially already exposing a vulnerable image to the public.
 ![](docs/img/ci-cd-cycle.jpg)
 
 
+## Video explaining Dokter
+<figure class="video_container">
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/8aKScUQjMWY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</figure>
+
 ## What makes Dokter special?
 
 Good question, `Dokter` is the byproduct of a much bigger effort, 
