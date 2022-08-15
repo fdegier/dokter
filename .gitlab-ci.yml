@@ -64,12 +64,12 @@ pytest:
 
 python-build:
   stage: build
+  variables:
+    DOKTER_VERSION: $CI_COMMIT_REF_NAME
   script:
     - apt-get update && apt-get install gettext-base
     - echo "Building version $CI_COMMIT_REF_NAME"
-    - VERSION=$CI_COMMIT_REF_NAME envsubst < setup.cfg > tmp.cfg
     - pip install build
-    - mv tmp.cfg setup.cfg
     - python -m build
   cache:
     key: build-cache-$CI_COMMIT_REF_NAME
