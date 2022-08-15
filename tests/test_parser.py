@@ -158,20 +158,27 @@ def test_labels(raw, labels):
 
 
 @pytest.mark.parametrize(
-    "raw,executable,arguments",
+    "raw,executable,arguments,docker_syntax",
     [
-        ("RUN apt-get install curl && git", "apt-get", "install curl && git"),
+        ("RUN apt-get install curl && git", "apt-get", "install curl && git", None),
         ("""RUN apt-get \\
                 install curl && \\
-                git""", "apt-get", "\\install curl && \\git")
+                git""", "apt-get", "\\install curl && \\git", None),
+        ("RUN --mount=type=cache,target=/cache npx encore production", "npx", "encore production",
+         "--mount=type=cache,target=/cache"),
+        ("RUN --security=insecure cat /proc/self/status | grep CapEff", "cat", "/proc/self/status | grep CapEff",
+         "--security=insecure"),
+        ("RUN --network=none pip install --find-links wheels mypackage", "pip", "install --find-links wheels mypackage",
+         "--network=none")
     ]
 )
-def test_runs(raw, executable, arguments):
+def test_runs(raw, executable, arguments, docker_syntax):
     dfp = DockerfileParser(raw_text=raw)
     assert len(dfp.runs) == 1
     assert dfp.runs[0]["instruction"] == "RUN"
     assert dfp.runs[0]["instruction_details"].get("executable") == executable
     assert dfp.runs[0]["instruction_details"].get("arguments") == arguments
+    assert dfp.runs[0]["instruction_details"].get("docker_syntax") == docker_syntax
 
 
 @pytest.mark.parametrize(
@@ -181,6 +188,7 @@ def test_runs(raw, executable, arguments):
         ("ENTRYPOINT ['python']", "python", []),
         ("ENTRYPOINT []", None, []),
         ("ENTRYPOINT python", "python", []),
+        ("ENTRYPOINT --network=none python", "python", [])
     ]
 )
 def test_entrypoints(raw, executable, arguments):

@@ -78,20 +78,32 @@ class DockerfileParser:
 
     @staticmethod
     def _parse_json_notation(command: str) -> dict:
+        out = dict(executable=None, arguments=[])
         try:
             run_eval = ast.literal_eval(command)
         except (SyntaxError, ValueError):
             run_eval = command
         if isinstance(run_eval, list):
-            if len(run_eval) > 0:
-                return dict(executable=run_eval[0], arguments=run_eval[1:])
-            else:
-                return dict(executable=None, arguments=run_eval[1:])
+            if len(run_eval) == 0:
+                out["arguments"] = run_eval[1:]
+                return out
+            if run_eval[0].startswith("--"):
+                out["docker_syntax"] = run_eval[0]
+                run_eval = run_eval[1:]
+            out["executable"] = run_eval[0]
+            out["arguments"] = run_eval[1:]
         else:
-            run_split = command.split(" ", 1)
+            run_split: List = command.split(" ", 1)
+            if run_split[0].startswith("--"):
+                out["docker_syntax"] = run_split[0]
+                run_split: List = run_split[1].split(" ", 1)
             if len(run_split) == 1:
-                return dict(executable=run_split[0], arguments=[])
-            return dict(executable=run_split[0], arguments=run_split[1])
+                out["executable"] = run_split[0]
+            else:
+                out["executable"] = run_split[0]
+                out["arguments"] = run_split[1]
+
+        return out
 
     @staticmethod
     def _parse_multi_var(command, key_name):
