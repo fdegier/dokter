@@ -15,6 +15,8 @@ def dokter():
                         help="Save the output in a JSON formatted for GitLab Code Quality reports")
     parser.add_argument("-V", "--verbose", dest="verbose", required=False, action="store_true",
                         help="Verbose information")
+    parser.add_argument("--dockerignore", dest="dockerignore", required=False, default=".dockerignore",
+                        help="Path to dockerignore file, default: .dockerignore")
     args = parser.parse_args()
     a = Analyzer(**vars(args))
     if args.explain_rule is None:
