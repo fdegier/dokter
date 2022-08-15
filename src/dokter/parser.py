@@ -3,6 +3,7 @@ import ast
 import fnmatch
 import glob
 import os
+from typing import Dict, List
 
 
 class ParsingError(Exception):
@@ -29,7 +30,7 @@ class DockerfileParser:
         self.df_ast = self.parse_dockerfile()
 
     @staticmethod
-    def _read_file(path: str, docker_ignore: bool = False) -> list:
+    def _read_file(path: str, docker_ignore: bool = False) -> List:
         if os.path.exists(path):
             with open(path, 'r') as f:
                 data = f.read().splitlines()
@@ -103,7 +104,7 @@ class DockerfileParser:
         else:
             return {key_name: command}
 
-    def _parse_dynamic_files(self, source_locations: list) -> list:
+    def _parse_dynamic_files(self, source_locations: list) -> List:
         to_copy_files = []
         for source_location in source_locations:
             if os.path.isfile(path=source_location):
@@ -120,7 +121,7 @@ class DockerfileParser:
                                   not i.endswith(f"{source_location}/")])
         return sorted(to_copy_files)
 
-    def _parse_command(self, instruction: str, command: str) -> [dict, list]:
+    def _parse_command(self, instruction: str, command: str) -> [Dict, List]:
         instruction = instruction.upper()
         if instruction == "COMMENT":
             comment = command.strip()
@@ -209,7 +210,7 @@ class DockerfileParser:
         lines[0]["raw_command"] = single_line
         return lines[0]
 
-    def split_multi_lines(self, lines: list) -> list:
+    def split_multi_lines(self, lines: list) -> List:
         result = []
         start_index = 0
         for i, x in enumerate(lines):
@@ -227,14 +228,15 @@ class DockerfileParser:
 
         return command
 
-    def _get_index(self, li, index, offset, error_value=None):
+    @staticmethod
+    def _get_index(li, index, offset, error_value=None):
         try:
             index = index + offset
             return li[index]
         except IndexError:
             return error_value
 
-    def parse_dockerfile(self) -> list[dict]:
+    def parse_dockerfile(self) -> List[dict]:
         parsed = [{"line_number": dict(start=line_number + 1, end=line_number + 1),
                    "raw_line": i,
                    "state": self._get_state(line=i),
@@ -247,7 +249,8 @@ class DockerfileParser:
             next_instruction = self._get_index(li=parsed, index=i, offset=1, error_value={})
             prev_instruction = self._get_index(li=parsed, index=i, offset=-1, error_value={})
             if instruction["state"] == "comment":
-                if "continued_" in next_instruction.get("state", "") or "continued_" in prev_instruction.get("state", ""):
+                if "continued_" in next_instruction.get("state", "") or \
+                        "continued_" in prev_instruction.get("state", ""):
                     parsed[parsed.index(instruction)]["state"] = ""
 
         multi_line_instructions = self.split_multi_lines([i for i in parsed if "_multi_line_" in i["state"]])
@@ -267,87 +270,87 @@ class DockerfileParser:
                     for i in single_line_instructions]
         return enriched
 
-    def _get_instructions(self, instruction: str) -> list[dict]:
+    def _get_instructions(self, instruction: str) -> List[dict]:
         return [i for i in self.df_ast if i["instruction"] == instruction]
 
     @property
-    def users(self) -> list[dict]:
+    def users(self) -> List[dict]:
         return self._get_instructions(instruction="USER")
 
     @property
-    def froms(self) -> list[dict]:
+    def froms(self) -> List[dict]:
         return self._get_instructions(instruction="FROM")
 
     @property
-    def instructions(self) -> list[dict]:
+    def instructions(self) -> List[dict]:
         return [i["instruction"] for i in self.df_ast]
 
     @property
-    def copies(self) -> list[dict]:
+    def copies(self) -> List[dict]:
         return self._get_instructions(instruction="COPY")
 
     @property
-    def adds(self) -> list[dict]:
+    def adds(self) -> List[dict]:
         return self._get_instructions(instruction="ADD")
 
     @property
-    def comments(self) -> list[dict]:
+    def comments(self) -> List[dict]:
         return self._get_instructions(instruction="COMMENT")
 
     @property
-    def args(self) -> list[dict]:
+    def args(self) -> List[dict]:
         return self._get_instructions(instruction="ARG")
 
     @property
-    def envs(self) -> list[dict]:
+    def envs(self) -> List[dict]:
         return self._get_instructions(instruction="ENV")
 
     @property
-    def labels(self) -> list[dict]:
+    def labels(self) -> List[dict]:
         return self._get_instructions(instruction="LABEL")
 
     @property
-    def runs(self) -> list[dict]:
+    def runs(self) -> List[dict]:
         return self._get_instructions(instruction="RUN")
 
     @property
-    def entrypoints(self) -> list[dict]:
+    def entrypoints(self) -> List[dict]:
         return self._get_instructions(instruction="ENTRYPOINT")
 
     @property
-    def cmds(self) -> list[dict]:
+    def cmds(self) -> List[dict]:
         return self._get_instructions(instruction="CMD")
 
     @property
-    def shells(self) -> list[dict]:
+    def shells(self) -> List[dict]:
         return self._get_instructions(instruction="SHELL")
 
     @property
-    def exposes(self) -> list[dict]:
+    def exposes(self) -> List[dict]:
         return self._get_instructions(instruction="EXPOSE")
 
     @property
-    def workdirs(self) -> list[dict]:
+    def workdirs(self) -> List[dict]:
         return self._get_instructions(instruction="WORKDIR")
 
     @property
-    def stopsignals(self) -> list[dict]:
+    def stopsignals(self) -> List[dict]:
         return self._get_instructions(instruction="STOPSIGNAL")
 
     @property
-    def volumes(self) -> list[dict]:
+    def volumes(self) -> List[dict]:
         return self._get_instructions(instruction="VOLUME")
 
     @property
-    def healthchecks(self) -> list[dict]:
+    def healthchecks(self) -> List[dict]:
         return self._get_instructions(instruction="HEALTHCHECK")
 
     @property
-    def onbuilds(self) -> list[dict]:
+    def onbuilds(self) -> List[dict]:
         return self._get_instructions(instruction="ONBUILD")
 
     @property
-    def maintainers(self) -> list[dict]:
+    def maintainers(self) -> List[dict]:
         return self._get_instructions(instruction="MAINTAINER")
 
 
