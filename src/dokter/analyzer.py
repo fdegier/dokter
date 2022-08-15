@@ -66,7 +66,7 @@ class Analyzer:
     def _return_results(self) -> dict:
         return self.report
 
-    def dfa000_shellcheck(self):
+    def dfa000(self):
         """
         Violation of Shellcheck rule
 
@@ -143,15 +143,15 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         COPY src /app/src
         COPY requirements.txt /app/
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         COPY . /app
-        ++++++++
+        ```
 
         Autocorrect: False
         :return:
@@ -175,15 +175,15 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         RUN --mount=type=secret,id=docker_token docker login -u user -p $(cat /run/secrets/docker_token)
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         ARG TOKEN
         RUN docker login -u user -p $TOKEN
-        ++++++++
+        ```
 
         Autocorrect: False
         :return:
@@ -211,18 +211,18 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         FROM python:3.10.0
         RUN useradd -D appuser && chown -R appuser /app
         USER appuser
         CMD ["python", "main.py"]
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         FROM python:3.10.0
         CMD ["python", "main.py"]
-        ++++++++
+        ```
 
         Autocorrect: True
         :return:
@@ -320,7 +320,7 @@ class Analyzer:
 
     def dfa009(self):
         """
-        Follow correct order to optimize caching
+        To be added: Follow correct order to optimize caching.
         :return:
         """
         pass
@@ -367,14 +367,14 @@ class Analyzer:
         MAINTAINER is deprecated, use LABEL instead.
 
         Incorrect:
-        ++++++++
+        ```
         MAINTAINER dev@someproject.org
-        ++++++++
+        ```
 
         Correct:
-        ++++++++
+        ```
         LABEL maintainer="dev@someproject.org"
-        ++++++++
+        ```
 
         Autocorrect: True
         :return:
