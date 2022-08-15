@@ -23,7 +23,7 @@ def test_explain(rule, out):
 )
 def test_dfa000(raw, severity, count):
     dfa = Analyzer(raw_text=raw)
-    dfa.dfa000_shellcheck()
+    dfa.dfa000()
     result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
