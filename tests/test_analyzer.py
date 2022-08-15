@@ -23,7 +23,7 @@ def test_explain(rule, out):
 )
 def test_dfa000(raw, severity, count):
     dfa = Analyzer(raw_text=raw)
-    dfa.dfa000_shellcheck()
+    dfa.dfa000()
     result = dfa._return_results()
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
@@ -125,6 +125,9 @@ def test_dfa005(users, severity, count, formatted):
         ("Dockerfile.test", "minor", 1),
         ("dockerfile", "minor", 1),
         ("DockerFile", "minor", 1),
+        ("src/Dockerfile", "minor", 0),
+        ("src/api/api.Dockerfile", "minor", 0),
+        ("src/api/api-Dockerfile", "minor", 1)
     ]
 )
 def test_dfa006(dockerfile, severity, count):

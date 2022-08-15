@@ -10,7 +10,7 @@ from .shellcheck import ShellCheck
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
                  verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False,
-                 write_df: bool = False, show_df: bool = False, silent: bool = False):
+                 write_df: bool = False, show_df: bool = False, silent: bool = False, **kwargs):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -34,6 +34,7 @@ class Analyzer:
         self.show_dockerfile = show_df
         self.write_dockerfile = write_df
         self.shellcheck = ShellCheck()
+        self.kwargs = kwargs
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
         cc_entry = {
@@ -65,7 +66,7 @@ class Analyzer:
     def _return_results(self) -> dict:
         return self.report
 
-    def dfa000_shellcheck(self):
+    def dfa000(self):
         """
         Violation of Shellcheck rule
 
@@ -142,15 +143,15 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         COPY src /app/src
         COPY requirements.txt /app/
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         COPY . /app
-        ++++++++
+        ```
 
         Autocorrect: False
         :return:
@@ -174,15 +175,15 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         RUN --mount=type=secret,id=docker_token docker login -u user -p $(cat /run/secrets/docker_token)
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         ARG TOKEN
         RUN docker login -u user -p $TOKEN
-        ++++++++
+        ```
 
         Autocorrect: False
         :return:
@@ -210,18 +211,18 @@ class Analyzer:
 
         Example of secure instruction:
 
-        ++++++++
+        ```
         FROM python:3.10.0
         RUN useradd -D appuser && chown -R appuser /app
         USER appuser
         CMD ["python", "main.py"]
-        ++++++++
+        ```
 
         Example of insecure instruction:
-        ++++++++
+        ```
         FROM python:3.10.0
         CMD ["python", "main.py"]
-        ++++++++
+        ```
 
         Autocorrect: True
         :return:
@@ -266,7 +267,7 @@ class Analyzer:
         rule = inspect.stack()[0][3]
         severity = "minor"
         categories = ["Style"]
-        if self.dockerfile.split(".")[-1] != "Dockerfile":
+        if os.path.basename(self.dockerfile).split(".")[-1] != "Dockerfile":
             data = {"line_number": {"start": 0, "end": 0}}
             self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa006),
                             categories=categories)
@@ -319,7 +320,7 @@ class Analyzer:
 
     def dfa009(self):
         """
-        Follow correct order to optimize caching
+        To be added: Follow correct order to optimize caching.
         :return:
         """
         pass
@@ -366,14 +367,14 @@ class Analyzer:
         MAINTAINER is deprecated, use LABEL instead.
 
         Incorrect:
-        ++++++++
+        ```
         MAINTAINER dev@someproject.org
-        ++++++++
+        ```
 
         Correct:
-        ++++++++
+        ```
         LABEL maintainer="dev@someproject.org"
-        ++++++++
+        ```
 
         Autocorrect: True
         :return:
