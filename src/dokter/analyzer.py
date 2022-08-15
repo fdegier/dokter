@@ -349,13 +349,22 @@ class Analyzer:
         severity = "major"
         categories = ["Style"]
 
+        # Check if multi-stage
+        df_ast = self.dfp.df_ast
+        dfp_instructions = self.dfp.instructions
+        froms = [(n, i) for n, i in enumerate(self.dfp.instructions) if i == "FROM"]
+        if len(froms) > 1:
+            multi_stage_offset = froms[-1][0]
+            dfp_instructions = self.dfp.instructions[multi_stage_offset:]
+            df_ast = self.dfp.df_ast[multi_stage_offset:]
+
         instructions_past_entrypoint = []
-        if "ENTRYPOINT" in self.dfp.instructions:
-            instructions_past_entrypoint = self.dfp.df_ast[self.dfp.instructions.index("ENTRYPOINT")+1:]
+        if "ENTRYPOINT" in dfp_instructions:
+            instructions_past_entrypoint = df_ast[dfp_instructions.index("ENTRYPOINT")+1:]
 
         instructions_past_cmd = []
-        if "CMD" in self.dfp.instructions:
-            instructions_past_cmd = self.dfp.df_ast[self.dfp.instructions.index("CMD")+1:]
+        if "CMD" in dfp_instructions:
+            instructions_past_cmd = df_ast[dfp_instructions.index("CMD")+1:]
 
         for i in instructions_past_entrypoint + instructions_past_cmd:
             if i["instruction"] not in ["CMD", "COMMENT"]:
