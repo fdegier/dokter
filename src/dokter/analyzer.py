@@ -10,7 +10,7 @@ from .shellcheck import ShellCheck
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
                  verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False,
-                 write_df: bool = False, show_df: bool = False, silent: bool = False):
+                 write_df: bool = False, show_df: bool = False, silent: bool = False, **kwargs):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -34,6 +34,7 @@ class Analyzer:
         self.show_dockerfile = show_df
         self.write_dockerfile = write_df
         self.shellcheck = ShellCheck()
+        self.kwargs = kwargs
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
         cc_entry = {
