@@ -125,6 +125,9 @@ def test_dfa005(users, severity, count, formatted):
         ("Dockerfile.test", "minor", 1),
         ("dockerfile", "minor", 1),
         ("DockerFile", "minor", 1),
+        ("src/Dockerfile", "minor", 0),
+        ("src/api/api.Dockerfile", "minor", 0),
+        ("src/api/api-Dockerfile", "minor", 1)
     ]
 )
 def test_dfa006(dockerfile, severity, count):

@@ -266,7 +266,7 @@ class Analyzer:
         rule = inspect.stack()[0][3]
         severity = "minor"
         categories = ["Style"]
-        if self.dockerfile.split(".")[-1] != "Dockerfile":
+        if os.path.basename(self.dockerfile).split(".")[-1] != "Dockerfile":
             data = {"line_number": {"start": 0, "end": 0}}
             self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa006),
                             categories=categories)
