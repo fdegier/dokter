@@ -7,6 +7,8 @@ The objective of `dokter` is to make your Dockerfiles better, it will make sure 
 - follow best practices
 - are pretty formatted
 
+## Rules information
+
 For an overview of the rules see: [rules](docs/overview.md)
 
 ## DevOps lifecycle
