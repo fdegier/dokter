@@ -491,7 +491,7 @@ class Analyzer:
 
         if self.gitlab_sast:
             report_location = f"dokter-sast-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
-            self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
+            self._write_file(location=report_location, data=json.dumps(self.gitlab_security_scanner))
             print(f"\nSAST report written to: {report_location}")
 
         new_dockerfile = self.formatter()
