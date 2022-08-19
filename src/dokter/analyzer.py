@@ -97,7 +97,7 @@ class Analyzer:
         self.results_code_climate.append(cc_entry)
 
         gss_entry = {
-            "id": uuid.uuid4(),
+            "id": str(uuid.uuid4()),
             "category": "sast",
             "message": f'{rule_info.splitlines()[0]}',
             "description": rule_info.split(":return:", 1)[0],
@@ -110,7 +110,7 @@ class Analyzer:
                     "start_line": data["line_number"]["start"],
                     "end_line": data["line_number"]["end"]
                 },
-            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=uuid.uuid4(),
+            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=str(uuid.uuid4()),
                                  url=f"https://gitlab.com/gitlab-org/incubation-engineering/ai-assist"
                                      f"/dokter/-/blob/main/docs/{rule.lower()}.md")]
         }
