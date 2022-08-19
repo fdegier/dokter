@@ -2,7 +2,9 @@ import inspect
 import json
 import os
 import time
+import uuid
 
+from . import __version__
 from .parser import DockerfileParser
 from .shellcheck import ShellCheck
 
@@ -10,7 +12,8 @@ from .shellcheck import ShellCheck
 class Analyzer:
     def __init__(self, dockerfile: str = None, raw_text: str = None, dockerignore: str = ".dockerignore",
                  verbose: bool = False, explain_rule: str = None, gitlab_codequality: bool = False,
-                 write_df: bool = False, show_df: bool = False, silent: bool = False, **kwargs):
+                 gitlab_sast: bool = False, write_df: bool = False, show_df: bool = False,
+                 silent: bool = False, **kwargs):
         if dockerfile is not None:
             self.dfp = DockerfileParser(dockerfile=dockerfile, dockerignore=dockerignore)
         elif raw_text is not None:
@@ -35,6 +38,39 @@ class Analyzer:
         self.write_dockerfile = write_df
         self.shellcheck = ShellCheck()
         self.kwargs = kwargs
+        self.gitlab_sast = gitlab_sast
+        self.gitlab_security_scanner = {
+            "version": "14.0.4",
+            "vulnerabilities": [],
+            "scan": {
+                "analyzer":
+                    {
+                        "id": "dokter",
+                        "name": "Dokter",
+                        "url": "https://gitlab.com/gitlab-org/incubation-engineering/ai-assist/dokter",
+                        "vendor":
+                            {
+                                "name": "GitLab"
+                            },
+                        "version": __version__
+                    },
+                "scanner":
+                    {
+                        "id": "dokter",
+                        "name": "Dokter",
+                        "url": "https://gitlab.com/gitlab-org/incubation-engineering/ai-assist/dokter",
+                        "vendor":
+                            {
+                                "name": "GitLab"
+                            },
+                        "version": "v1.5.12"
+                    },
+                "type": "sast",
+                "start_time": "2022-08-19T12:49:46",
+                "end_time": "2022-08-19T12:49:57",
+                "status": "success"
+            }
+        }
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
         cc_entry = {
@@ -52,6 +88,26 @@ class Analyzer:
             "description": rule_info.splitlines()[0]
         }
         self.results_code_climate.append(cc_entry)
+
+        gss_entry = {
+            "id": uuid.uuid4(),
+            "category": "sast",
+            "message": rule_info.splitlines()[0],
+            "description": rule_info.split(":return:", 1)[0],
+            "cve": "",
+            "severity": severity,
+            "scanner": dict(id="dokter", name="Dokter"),
+            "location":
+                {
+                    "file": self.dockerfile,
+                    "start_line": data["line_number"]["start"],
+                    "end_line": data["line_number"]["end"]
+                },
+            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=uuid.uuid4(),
+                                 url=f"https://gitlab.com/gitlab-org/incubation-engineering/ai-assist"
+                                     f"/dokter/-/blob/main/docs/{rule.lower()}.md")]
+        }
+        self.gitlab_security_scanner["vulnerabilities"].append(gss_entry)
 
         if self.verbose_explanation is True:
             rule_info = f"\n{rule_info.split(':return:', 1)[0]}"
@@ -103,7 +159,8 @@ class Analyzer:
         categories = ["Security"]
         sensitive_files = [
             ".env", ".pem", ".properties"
-            "settings", "config", "secrets", "application", "dev", "appsettings", "credentials", "default", "strings",
+                            "settings", "config", "secrets", "application", "dev", "appsettings", "credentials",
+            "default", "strings",
             "environment"
         ]
 
@@ -351,11 +408,11 @@ class Analyzer:
 
         instructions_past_entrypoint = []
         if "ENTRYPOINT" in self.dfp.instructions:
-            instructions_past_entrypoint = self.dfp.df_ast[self.dfp.instructions.index("ENTRYPOINT")+1:]
+            instructions_past_entrypoint = self.dfp.df_ast[self.dfp.instructions.index("ENTRYPOINT") + 1:]
 
         instructions_past_cmd = []
         if "CMD" in self.dfp.instructions:
-            instructions_past_cmd = self.dfp.df_ast[self.dfp.instructions.index("CMD")+1:]
+            instructions_past_cmd = self.dfp.df_ast[self.dfp.instructions.index("CMD") + 1:]
 
         for i in instructions_past_entrypoint + instructions_past_cmd:
             if i["instruction"] not in ["CMD", "COMMENT"]:
@@ -424,6 +481,11 @@ class Analyzer:
             report_location = f"dokter-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
             self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
             print(f"\nCode Quality report written to: {report_location}")
+
+        if self.gitlab_sast:
+            report_location = f"dokter-sast-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
+            self._write_file(location=report_location, data=json.dumps(self.results_code_climate))
+            print(f"\nSAST report written to: {report_location}")
 
         new_dockerfile = self.formatter()
 
