@@ -115,7 +115,7 @@ dokter:
     paths:
       - "dokter-$CI_COMMIT_SHA.json"
       - "dokter-sast-$CI_COMMIT_SHA.json"
-    allow_failure: true
+  allow_failure: true
 
 docker-test:
   image: docker:latest
