@@ -95,8 +95,6 @@ docker-build:
     key: build-cache-$CI_COMMIT_REF_NAME
     paths:
       - dist/
-  rules:
-    - if: $CI_COMMIT_REF_PROTECTED == 'true'
 
 dokter:
   image: $DOKTER_IMAGE:$CI_COMMIT_SHA
