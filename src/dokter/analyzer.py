@@ -39,6 +39,13 @@ class Analyzer:
         self.shellcheck = ShellCheck()
         self.kwargs = kwargs
         self.gitlab_sast = gitlab_sast
+        self.gitlab_sast_severity_map = {
+            "INFO": "Info",
+            "MINOR": "Low",
+            "MAJOR": "High",
+            "CRITICAL": "Critical",
+            "BLOCKER": "Critical"
+        }
         self.gitlab_security_scanner = {
             "version": "14.0.4",
             "vulnerabilities": [],
@@ -52,7 +59,7 @@ class Analyzer:
                             {
                                 "name": "GitLab"
                             },
-                        "version": __version__
+                        "version": "0.0.0" if __version__ == "dev" else __version__
                     },
                 "scanner":
                     {
@@ -92,10 +99,10 @@ class Analyzer:
         gss_entry = {
             "id": uuid.uuid4(),
             "category": "sast",
-            "message": rule_info.splitlines()[0],
+            "message": f'{rule_info.splitlines()[0]}',
             "description": rule_info.split(":return:", 1)[0],
             "cve": "",
-            "severity": severity,
+            "severity": self.gitlab_sast_severity_map.get(severity.upper(), "Unknown"),
             "scanner": dict(id="dokter", name="Dokter"),
             "location":
                 {
