@@ -70,11 +70,9 @@ class Analyzer:
                             {
                                 "name": "GitLab"
                             },
-                        "version": "v1.5.12"
+                        "version": "0.0.0" if __version__ == "dev" else __version__
                     },
                 "type": "sast",
-                "start_time": "2022-08-19T12:49:46",
-                "end_time": "2022-08-19T12:49:57",
                 "status": "success"
             }
         }
