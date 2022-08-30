@@ -1,3 +1,4 @@
+import datetime
 import inspect
 import json
 import os
@@ -73,6 +74,7 @@ class Analyzer:
                         "version": "0.0.0" if __version__ == "dev" else __version__
                     },
                 "type": "sast",
+                "start_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "status": "success"
             }
         }
@@ -497,6 +499,7 @@ class Analyzer:
             print(f"\nCode Quality report written to: {report_location}")
 
         if self.gitlab_sast:
+            self.gitlab_security_scanner["end_time"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             report_location = f"dokter-sast-{os.environ.get('CI_COMMIT_SHA', int(time.time()))}.json"
             self._write_file(location=report_location, data=json.dumps(self.gitlab_security_scanner))
             print(f"\nSAST report written to: {report_location}")
