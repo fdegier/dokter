@@ -433,8 +433,7 @@ class Analyzer:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
                                 categories=categories)
 
-
-def dfa012(self):
+    def dfa012(self):
         """
         MAINTAINER is deprecated, use LABEL instead.
 
