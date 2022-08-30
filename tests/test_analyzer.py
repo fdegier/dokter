@@ -198,6 +198,8 @@ def test_dfa010(raw, severity, count):
     [
         ('CMD ["python", "main.py", "--only-data"]\nRUN apt-get update', "major", 1),
         ('CMD ["python", "main.py", "--only-data"]', "major", 0),
+        ('FROM sratch\nCMD ["python", "main.py", "--only-data"]', "major", 0),
+        ('FROM image AS common\nENTRYPOINT ["/sbin/tini", "--"]\nFROM common\nCMD echo "Hello world"', "major", 0)
     ]
 )
 def test_dfa011(raw, severity, count):

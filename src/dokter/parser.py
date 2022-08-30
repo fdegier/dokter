@@ -3,6 +3,7 @@ import ast
 import fnmatch
 import glob
 import os
+import re
 from typing import Dict, List
 
 
@@ -199,11 +200,22 @@ class DockerfileParser:
             return dict(port=command)
         elif instruction in ["WORKDIR", "STOPSIGNAL", "VOLUME"]:
             return {instruction.lower(): command}
-        elif instruction in ["HEALTHCHECK", "ONBUILD"]:
+        elif instruction == "ONBUILD":
             command_split = command.replace(instruction, "").strip()
             command_split = self._parse_json_notation(command=command_split)
             return {
                 "sub_instruction": command_split['executable'],
+                **self._parse_json_notation(command=command_split['arguments'])
+            }
+        elif instruction == "HEALTHCHECK":
+            pattern = re.compile("--[a-zA-Z=-]+[a-z,0-9]+")
+            options = {i.replace("--", "").split("=")[0]: i.split("=", 1)[1] for i in
+                       re.findall(pattern=pattern, string=command)}
+            command_split = re.sub(pattern=pattern, repl="", string=command.replace(instruction, "").strip())
+            command_split = self._parse_json_notation(command=command_split.strip())
+            return {
+                "sub_instruction": command_split['executable'],
+                "options": options,
                 **self._parse_json_notation(command=command_split['arguments'])
             }
         elif instruction == "MAINTAINER":

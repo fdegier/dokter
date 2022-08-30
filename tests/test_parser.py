@@ -272,18 +272,25 @@ def test_volumes(raw, volume):
 
 
 @pytest.mark.parametrize(
-    "raw,sub_instruction,executable,arguments",
+    "raw,sub_instruction,executable,arguments,options",
     [
-        ("HEALTHCHECK CMD cat /tmp.txt", "CMD", "cat", "/tmp.txt"),
-        ("HEALTHCHECK ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'])
+        ("HEALTHCHECK CMD cat /tmp.txt", "CMD", "cat", "/tmp.txt", {}),
+        ("HEALTHCHECK ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'], {}),
+        ("HEALTHCHECK NONE", "NONE", None, [], {}),
+        ("HEALTHCHECK --interval=30s ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'], {"interval": "30s"}),
+        ("HEALTHCHECK --interval=30s --start-period=1m ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'],
+         {"interval": "30s", "start-period": "1m"}),
+        ("HEALTHCHECK --interval=30s --start-period=1m CMD cat /tmp.txt", "CMD", 'cat', '/tmp.txt',
+         {"interval": "30s", "start-period": "1m"})
     ]
 )
-def test_healthchecks(raw, sub_instruction, executable, arguments):
+def test_healthchecks(raw, sub_instruction, executable, arguments, options):
     dfp = DockerfileParser(raw_text=raw)
     assert len(dfp.healthchecks) == 1
     assert dfp.healthchecks[0]["instruction_details"].get("sub_instruction") == sub_instruction
     assert dfp.healthchecks[0]["instruction_details"].get("executable") == executable
     assert dfp.healthchecks[0]["instruction_details"].get("arguments") == arguments
+    assert dfp.healthchecks[0]["instruction_details"].get("options") == options
 
 
 @pytest.mark.parametrize(
