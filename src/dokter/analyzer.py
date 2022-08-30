@@ -1,3 +1,4 @@
+import base64
 import inspect
 import json
 import os
@@ -49,6 +50,7 @@ class Analyzer:
         self.gitlab_security_scanner = {
             "version": "14.0.4",
             "vulnerabilities": [],
+            "remediations": [],
             "scan": {
                 "analyzer":
                     {
@@ -77,6 +79,23 @@ class Analyzer:
             }
         }
 
+    def _patch_maker(self, data):
+        start_line = data["line_number"]["start"]
+        no_lines = data["line_number"]["end"] - start_line
+        if no_lines > 0:
+            end_line_offset = f",{no_lines}"
+        else:
+            end_line_offset = ""
+
+        patch_base = f"""
+        diff --git a/{self.dockerfile} b/{self.dockerfile}
+        index 5d311b9..a3f6959 100644
+        @@ -{start_line} +{start_line}{end_line_offset} @@
+        -{data['_raw']}
+        +{data['formatted']}
+        """
+        return str(base64.b64encode(patch_base.encode("ascii")), 'ascii')
+
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
         cc_entry = {
             "location": {
@@ -94,8 +113,9 @@ class Analyzer:
         }
         self.results_code_climate.append(cc_entry)
 
+        gss_entry_id = str(uuid.uuid4())
         gss_entry = {
-            "id": str(uuid.uuid4()),
+            "id": gss_entry_id,
             "category": "sast",
             "message": f'{rule_info.splitlines()[0]}',
             "description": rule_info.split(":return:", 1)[0],
@@ -108,11 +128,23 @@ class Analyzer:
                     "start_line": data["line_number"]["start"],
                     "end_line": data["line_number"]["end"]
                 },
-            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=str(uuid.uuid4()),
+            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=gss_entry_id,
                                  url=f"https://gitlab.com/gitlab-org/incubation-engineering/ai-assist"
                                      f"/dokter/-/blob/main/docs/{rule.lower()}.md")]
         }
+
+        gss_entry_remediation = {
+            "fixes": [
+                {
+                    "id": gss_entry_id
+                }
+            ],
+            "summary": rule_info.splitlines()[0],
+            "diff": self._patch_maker(data=data)
+        }
+
         self.gitlab_security_scanner["vulnerabilities"].append(gss_entry)
+        self.gitlab_security_scanner["remediations"].append(gss_entry_remediation)
 
         if self.verbose_explanation is True:
             rule_info = f"\n{rule_info.split(':return:', 1)[0]}"
