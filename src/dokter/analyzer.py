@@ -75,6 +75,7 @@ class Analyzer:
                     },
                 "type": "sast",
                 "start_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                "end_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "status": "success"
             }
         }
