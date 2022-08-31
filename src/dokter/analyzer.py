@@ -83,6 +83,8 @@ class Analyzer:
         }
 
     def _patch_maker(self, data):
+        if "_raw" not in data:
+            return ""
         start_line = data["line_number"]["start"]
         no_lines = data["line_number"]["end"] - start_line
         if no_lines > 0:
