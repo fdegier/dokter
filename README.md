@@ -7,6 +7,8 @@ The objective of `dokter` is to make your Dockerfiles better, it will make sure 
 - follow best practices
 - are pretty formatted
 
+## Rules information
+
 For an overview of the rules see: [rules](docs/overview.md)
 
 ## DevOps lifecycle
@@ -134,6 +136,12 @@ dokter:
     - dokter -d Dockerfile
 ```
 
+### GitLab Static Application Security Testing (SAST)  
+
+To output the result of `dokter` to the GitLab security overview, simply run with the `--sast` flag. In a future release
+, support for remediation's will be added.
+
+
 ### GitLab Code Quality
 
 To use the output in GitLab code quality you can use below as an example:
@@ -152,7 +160,7 @@ dokter:
         - "dokter-$CI_COMMIT_SHA.json"
     paths:
       - "dokter-$CI_COMMIT_SHA.json"
-```
+``` 
 
 ### Automatic merge requests with resolutions
 

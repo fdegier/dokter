@@ -119,7 +119,7 @@ docker-test:
     - docker:dind
   stage: post-build-test
   script:
-    - docker run -v $(pwd):/app $DOKTER_IMAGE:$CI_COMMIT_SHA dokter -d dokter.Dockerfile -c
+    - docker run -v $(pwd):/app -e CI_COMMIT_SHA=$CI_COMMIT_SHA $DOKTER_IMAGE:$CI_COMMIT_SHA dokter -d dokter.Dockerfile -c --sast
     - test -f dokter-$CI_COMMIT_SHA.json
   rules:
     - if: $CI_COMMIT_REF_PROTECTED == 'true'
