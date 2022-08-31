@@ -136,6 +136,12 @@ dokter:
     - dokter -d Dockerfile
 ```
 
+### GitLab Static Application Security Testing (SAST)  
+
+To output the result of `dokter` to the GitLab security overview, simply run with the `--sast` flag. In a future release
+, support for remediation's will be added.
+
+
 ### GitLab Code Quality
 
 To use the output in GitLab code quality you can use below as an example:
@@ -154,7 +160,7 @@ dokter:
         - "dokter-$CI_COMMIT_SHA.json"
     paths:
       - "dokter-$CI_COMMIT_SHA.json"
-```
+``` 
 
 ### Automatic merge requests with resolutions
 
