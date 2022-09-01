@@ -92,13 +92,11 @@ class Analyzer:
         else:
             end_line_offset = ""
 
-        patch_base = f"""
-        diff --git a/{self.dockerfile} b/{self.dockerfile}
-        index 5d311b9..a3f6959 100644
-        @@ -{start_line} +{start_line}{end_line_offset} @@
-        -{data['_raw']}
-        +{data['formatted']}
-        """
+        patch_base = f"diff --git a/{self.dockerfile} b/{self.dockerfile}\n" \
+                     f"index 5d311b9..a3f6959 100644\n" \
+                     f"@@ -{start_line} +{start_line}{end_line_offset} @@\n" \
+                     f"-{data['_raw']}\n" \
+                     f"+{data['formatted']}"
         return str(base64.b64encode(patch_base.encode("ascii")), 'ascii')
 
     def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
