@@ -96,7 +96,7 @@ class Analyzer:
                      f"index 5d311b9..a3f6959 100644\n" \
                      f"@@ -{start_line}{end_line_offset} +{start_line}{end_line_offset} @@\n"
 
-        for i in ['-' + i for i in data['_raw'].replace("\\", "\ \n").split(" \n")]:
+        for i in ['-' + i for i in data['_raw'].replace("\\", "\\ \n").split(" \n")]:
             patch_base += f"{i}\n"
         for i in ['+' + i for i in data['formatted'].splitlines()]:
             patch_base += f"{i}\n"
