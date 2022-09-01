@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 
 from src.dokter.analyzer import Analyzer
@@ -225,4 +227,16 @@ def test_dfa012(maintainer,  severity, count, formatted):
     assert result.get(severity.upper(), 0) == count
     assert sum(result.values()) == count
 
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("RUN apt-get install git \\    curl", """diff --git a/test b/test\nindex 5d311b9..a3f6959 100644\n@@ -1 +1 @@\n-RUN apt-get install git \\\n-    curl\n+RUN apt-get install git \\\n+	    curl\n""")
+    ]
+)
+def test_patch_maker(raw, expected):
+    dfa = Analyzer(raw_text=raw)
+    dfa.dockerfile = "test"
+    data = dfa._patch_maker(data=dfa.dfp.runs[0])
+    assert base64.b64decode(data).decode("ascii") == expected
 
