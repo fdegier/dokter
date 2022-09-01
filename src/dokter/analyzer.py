@@ -144,6 +144,7 @@ class Analyzer:
                     "id": gss_entry_id
                 }
             ],
+            "cve": "",
             "summary": rule_info.splitlines()[0],
             "diff": self._patch_maker(data=data)
         }
