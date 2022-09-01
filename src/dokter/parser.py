@@ -287,7 +287,7 @@ class DockerfileParser:
                          instruction=i["instruction"],
                          instruction_details=self._parse_command(instruction=i["instruction"],
                                                                  command=i["raw_command"]),
-                         _raw=i["raw_command"],
+                         _raw=f'{i["instruction"]} {i["raw_command"]}'.replace("\\", "\\n"),
                          formatted=self.format_and_correct_sh(instruction=i['instruction'],
                                                               raw_command=i['raw_command'], raw_line=i["raw_line"])
                          )
