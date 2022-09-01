@@ -117,14 +117,14 @@ class Analyzer:
             "description": rule_info.splitlines()[0]
         }
         self.results_code_climate.append(cc_entry)
-
+        cve = ""
         gss_entry_id = str(uuid.uuid4())
         gss_entry = {
             "id": gss_entry_id,
             "category": "sast",
             "message": f'{rule_info.splitlines()[0]}',
             "description": rule_info.split(":return:", 1)[0],
-            "cve": "",
+            "cve": cve,
             "severity": self.gitlab_sast_severity_map.get(severity.upper(), "Unknown"),
             "scanner": dict(id="dokter", name="Dokter"),
             "location":
@@ -141,10 +141,10 @@ class Analyzer:
         gss_entry_remediation = {
             "fixes": [
                 {
-                    "id": gss_entry_id
+                    "id": gss_entry_id,
+                    "cve": cve,
                 }
             ],
-            "cve": "",
             "summary": rule_info.splitlines()[0],
             "diff": self._patch_maker(data=data)
         }
