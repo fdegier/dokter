@@ -1,3 +1,4 @@
+import base64
 import datetime
 import inspect
 import json
@@ -50,6 +51,7 @@ class Analyzer:
         self.gitlab_security_scanner = {
             "version": "14.0.4",
             "vulnerabilities": [],
+            "remediations": [],
             "scan": {
                 "analyzer":
                     {
@@ -80,7 +82,28 @@ class Analyzer:
             }
         }
 
-    def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None):
+    def _patch_maker(self, data):
+        if "_raw" not in data:
+            return ""
+        start_line = data["line_number"]["start"]
+        no_lines = data["line_number"]["end"] - start_line
+        if no_lines > 0:
+            end_line_offset = f",{no_lines}"
+        else:
+            end_line_offset = ""
+
+        patch_base = f"diff --git a/{self.dockerfile} b/{self.dockerfile}\n" \
+                     f"index 5d311b9..a3f6959 100644\n" \
+                     f"@@ -{start_line}{end_line_offset} +{start_line}{end_line_offset} @@\n"
+
+        for i in ['-' + i for i in data['_raw'].replace("\\", "\\ \n").split(" \n")]:
+            patch_base += f"{i}\n"
+        for i in ['+' + i for i in data['formatted'].splitlines()]:
+            patch_base += f"{i}\n"
+        return str(base64.b64encode(patch_base.encode("ascii")), 'ascii')
+
+    def _formatter(self, rule: str, data: dict, severity: str, rule_info: str, categories: list = None,
+                   autocorrect: bool = False):
         cc_entry = {
             "location": {
                 "lines": {
@@ -96,13 +119,14 @@ class Analyzer:
             "description": rule_info.splitlines()[0]
         }
         self.results_code_climate.append(cc_entry)
-
+        cve = ""
+        gss_entry_id = str(uuid.uuid4())
         gss_entry = {
-            "id": str(uuid.uuid4()),
+            "id": gss_entry_id,
             "category": "sast",
             "message": f'{rule_info.splitlines()[0]}',
             "description": rule_info.split(":return:", 1)[0],
-            "cve": "",
+            "cve": cve,
             "severity": self.gitlab_sast_severity_map.get(severity.upper(), "Unknown"),
             "scanner": dict(id="dokter", name="Dokter"),
             "location":
@@ -111,11 +135,25 @@ class Analyzer:
                     "start_line": data["line_number"]["start"],
                     "end_line": data["line_number"]["end"]
                 },
-            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=str(uuid.uuid4()),
+            "identifiers": [dict(type="dokter_id", name=rule.upper(), value=gss_entry_id,
                                  url=f"https://gitlab.com/gitlab-org/incubation-engineering/ai-assist"
                                      f"/dokter/-/blob/main/docs/{rule.lower()}.md")]
         }
+
         self.gitlab_security_scanner["vulnerabilities"].append(gss_entry)
+
+        if autocorrect:
+            gss_entry_remediation = {
+                "fixes": [
+                    {
+                        "id": gss_entry_id,
+                        "cve": cve,
+                    }
+                ],
+                "summary": rule_info.splitlines()[0],
+                "diff": self._patch_maker(data=data)
+            }
+            self.gitlab_security_scanner["remediations"].append(gss_entry_remediation)
 
         if self.verbose_explanation is True:
             rule_info = f"\n{rule_info.split(':return:', 1)[0]}"
@@ -137,6 +175,7 @@ class Analyzer:
         Autocorrect: True
         :return:
         """
+        autocorrect = True
         categories = ["Style"]
         for i in self.dfp.runs:
             sc_results = self.shellcheck.check(
@@ -151,7 +190,7 @@ class Analyzer:
 
                 severity = self.shellcheck_severity_cc_map.get(result["severity"].upper(), "info")
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=f'Shellcheck: {result["sc_rule_desc"]}',
-                                categories=categories)
+                                categories=categories, autocorrect=autocorrect)
 
     def dfa001(self):
         """
@@ -162,6 +201,7 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "critical"
         categories = ["Security"]
@@ -177,7 +217,7 @@ class Analyzer:
                 for source in i["instruction_details"]["source"]:
                     if word in source.lower() or word in i["instruction_details"]["target"].lower():
                         self._formatter(rule=rule, data=i, severity=severity, categories=categories,
-                                        rule_info=inspect.getdoc(self.dfa001))
+                                        rule_info=inspect.getdoc(self.dfa001), autocorrect=autocorrect)
 
     def dfa002(self):
         """
@@ -190,13 +230,14 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = True
         rule = inspect.stack()[0][3]
         severity = "info"
         categories = ["Security"]
         if len(self.dfp.docker_ignore_files) == 0:
             data = {"line_number": {"start": 0, "end": 0}}
             self._formatter(data=data, rule=rule, severity=severity, rule_info=inspect.getdoc(self.dfa002),
-                            categories=categories)
+                            categories=categories, autocorrect=autocorrect)
 
     def dfa003(self):
         """
@@ -221,6 +262,7 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "major"
         categories = ["Security"]
@@ -228,7 +270,7 @@ class Analyzer:
             for source in i["instruction_details"]["source"]:
                 if source == ".":
                     self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa003),
-                                    categories=categories)
+                                    categories=categories, autocorrect=autocorrect)
 
     def dfa004(self):
         """
@@ -253,6 +295,7 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "critical"
         categories = ["Security"]
@@ -265,7 +308,7 @@ class Analyzer:
             for i in self.dfp.args:
                 if word.lower() in i["instruction_details"]["argument"].lower():
                     self._formatter(data=i, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa004),
-                                    categories=categories)
+                                    categories=categories, autocorrect=autocorrect)
 
     def dfa005(self):
         """
@@ -292,6 +335,7 @@ class Analyzer:
         Autocorrect: True
         :return:
         """
+        autocorrect = True
         rule = inspect.stack()[0][3]
         severity = "major"
         categories = ["Security"]
@@ -299,7 +343,7 @@ class Analyzer:
             last_user = self.dfp.users[-1]
             if len(self.dfp.users) > 0 and last_user["instruction_details"]["user"].lower() == "root":
                 self._formatter(data=last_user, severity=severity, rule=rule, rule_info=inspect.getdoc(self.dfa005),
-                                categories=categories)
+                                categories=categories, autocorrect=autocorrect)
                 workdir = "/app" if len(self.dfp.workdirs) == 0 else \
                     self.dfp.workdirs[-1]["instruction_details"]["workdir"]
                 last_user["formatted"] = f"WORKDIR {workdir}\nRUN useradd -M appuser &&" \
@@ -329,13 +373,14 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "minor"
         categories = ["Style"]
         if os.path.basename(self.dockerfile).split(".")[-1] != "Dockerfile":
             data = {"line_number": {"start": 0, "end": 0}}
             self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa006),
-                            categories=categories)
+                            categories=categories, autocorrect=autocorrect)
 
     def dfa007(self):
         """
@@ -346,6 +391,7 @@ class Analyzer:
         Autocorrect: True
         :return:
         """
+        autocorrect = True
         rule = inspect.stack()[0][3]
         severity = "minor"
         categories = ["Bug Risk"]
@@ -358,7 +404,7 @@ class Analyzer:
                     pass
                 else:
                     self._formatter(rule=rule, data=i, severity=severity, rule_info=inspect.getdoc(self.dfa007),
-                                    categories=categories)
+                                    categories=categories, autocorrect=autocorrect)
                     i["formatted"] = i["formatted"].replace("ADD ", "COPY ")
 
     def dfa008(self):
@@ -368,6 +414,7 @@ class Analyzer:
         Autocorrect: True
         :return:
         """
+        autocorrect = True
         rule = inspect.stack()[0][3]
         severity = "major"
         categories = ["Performance"]
@@ -375,7 +422,7 @@ class Analyzer:
         for i, instruction in enumerate(self.dfp.instructions):
             if instruction == "RUN" and instruction == self.dfp.df_ast[i - 1]["instruction"]:
                 self._formatter(rule=rule, severity=severity, data=self.dfp.df_ast[i], categories=categories,
-                                rule_info=inspect.getdoc(self.dfa008))
+                                rule_info=inspect.getdoc(self.dfa008), autocorrect=autocorrect)
                 if first_run is None:
                     first_run = self.dfp.df_ast[i - 1]
                 corrected = self.dfp.df_ast[i]['formatted'].replace(f"{self.dfp.df_ast[i]['instruction']} ", '')
@@ -397,19 +444,21 @@ class Analyzer:
         Autocorrect: False
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "info"
         categories = ["Performance"]
         if "HEALTHCHECK" not in self.dfp.instructions:
             data = {"line_number": {"start": 0, "end": 0}}
             self._formatter(rule=rule, data=data, severity=severity, rule_info=inspect.getdoc(self.dfa010),
-                            categories=categories)
+                            categories=categories, autocorrect=autocorrect)
 
     def dfa011(self):
         """
         CMD or ENTRYPOINT should be the last instruction.
         :return:
         """
+        autocorrect = False
         rule = inspect.stack()[0][3]
         severity = "major"
         categories = ["Style"]
@@ -434,7 +483,7 @@ class Analyzer:
         for i in instructions_past_entrypoint + instructions_past_cmd:
             if i["instruction"] not in ["CMD", "COMMENT"]:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa011),
-                                categories=categories)
+                                categories=categories, autocorrect=autocorrect)
 
     def dfa012(self):
         """
@@ -453,13 +502,14 @@ class Analyzer:
         Autocorrect: True
         :return:
         """
+        autocorrect = True
         rule = inspect.stack()[0][3]
         severity = "major"
         categories = ["Style"]
         if len(self.dfp.maintainers) > 0:
             for i in self.dfp.maintainers:
                 self._formatter(rule=rule, severity=severity, data=i, rule_info=inspect.getdoc(self.dfa012),
-                                categories=categories)
+                                categories=categories, autocorrect=autocorrect)
                 i["formatted"] = i["formatted"].replace("MAINTAINER ", "LABEL maintainer=")
 
     @staticmethod

@@ -208,9 +208,10 @@ class DockerfileParser:
                 **self._parse_json_notation(command=command_split['arguments'])
             }
         elif instruction == "HEALTHCHECK":
-            pattern = re.compile("--[a-zA-Z=-]+[a-z,0-9]+")
-            options = {i.replace("--", "").split("=")[0]: i.split("=", 1)[1] for i in
-                       re.findall(pattern=pattern, string=command)}
+            pattern = r"--(interval|timeout|start-period|retries)=+[a-z,0-9]+"
+            options = {i.group(0).replace("--", "").split("=")[0]: i.group(0).split("=", 1)[1] for i in
+                       re.finditer(pattern=pattern, string=command, flags=re.MULTILINE)}
+
             command_split = re.sub(pattern=pattern, repl="", string=command.replace(instruction, "").strip())
             command_split = self._parse_json_notation(command=command_split.strip())
             return {
@@ -287,7 +288,7 @@ class DockerfileParser:
                          instruction=i["instruction"],
                          instruction_details=self._parse_command(instruction=i["instruction"],
                                                                  command=i["raw_command"]),
-                         _raw=i["raw_command"],
+                         _raw=f'{i["instruction"]} {i["raw_command"]}',
                          formatted=self.format_and_correct_sh(instruction=i['instruction'],
                                                               raw_command=i['raw_command'], raw_line=i["raw_line"])
                          )
