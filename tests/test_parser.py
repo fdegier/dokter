@@ -274,10 +274,10 @@ def test_volumes(raw, volume):
 @pytest.mark.parametrize(
     "raw,sub_instruction,executable,arguments,options",
     [
-        ("HEALTHCHECK CMD cat /tmp.txt", "CMD", "cat", "/tmp.txt", {}),
+        ("HEALTHCHECK CMD cat --force /tmp.txt", "CMD", "cat", "--force /tmp.txt", {}),
         ("HEALTHCHECK ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'], {}),
         ("HEALTHCHECK NONE", "NONE", None, [], {}),
-        ("HEALTHCHECK --interval=30s ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'], {"interval": "30s"}),
+        ("HEALTHCHECK --interval=30s ['CMD', 'cat', '--force', '/tmp.txt']", "CMD", 'cat', ['--force', '/tmp.txt'], {"interval": "30s"}),
         ("HEALTHCHECK --interval=30s --start-period=1m ['CMD', 'cat', '/tmp.txt']", "CMD", 'cat', ['/tmp.txt'],
          {"interval": "30s", "start-period": "1m"}),
         ("HEALTHCHECK --interval=30s --start-period=1m CMD cat /tmp.txt", "CMD", 'cat', '/tmp.txt',
