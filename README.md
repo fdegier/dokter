@@ -29,6 +29,14 @@ potentially already exposing a vulnerable image to the public.
 
 ![](docs/img/ci-cd-cycle.jpg)
 
+## Big Hairy Audacious Goal / Vision
+
+In an ideal world the whole concept of fixed Dockerfiles should be replaced with dynamic Dockerfiles. At build time, the
+ideal Dockerfile is determined and stored as an artifact, the image is subsequently tested and via an incremental 
+rollout deployed. Resulting in an image that is always up-to-date, free from (relevant) vulnerabilities which will save
+developers time from responding to container scanning incidents, but also increase confidence for security and 
+compliance departments. Should container scanning tools find a vulnerable image in the registry, a simple trigger of the 
+pipeline will restore the secure state of the image.  
 
 ## Video explaining Dokter
 <figure class="video_container">
